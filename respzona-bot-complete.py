@@ -1,0 +1,684 @@
+import logging
+import json
+import os
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from datetime import datetime
+
+
+# Логирование с подробностью
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
+
+logger = logging.getLogger(__name__)
+
+
+TOKEN = "8501298263:AAFsKnHjy9ha9pWji7j36kfQ3e5za01aYdQ"
+WEBAPP_URL = "https://verdant-paprenjak-887d4a.netlify.app/"
+TELEGRAM_URL = "https://t.me/PIRACTIVE"
+YOUTUBE_URL = "https://www.youtube.com/@ANTWOORDMUS"
+
+
+# Файл для сохранения данных пользователей
+USERS_FILE = "users_data.json"
+
+
+# ✅ ТВОЙ ID (установлен автоматически)
+ADMIN_ID = 8026939529
+
+
+# Медиафайлы треков с поддержкой воспроизведения
+TRACKS = {
+    'huday': {
+        'name': 'HUDAY',
+        'file_id': 'CQACAgIAAxkBAAM6aUWjWuDlBxzAyK-ZQi1JOQ8tvRkAAmuTAALKbTFK7KogMulGkc42BA',
+        'date': '19.06.2025',
+        'artists': 'Aryx, Nng',
+        'genre': 'Мемный поп/рэп',
+        'description': 'Мемный по настроению, но при этом завалакивающий трек про бездомного и пирог'
+    },
+    'huday_phonk': {
+        'name': 'HUDAY PHONK',
+        'file_id': 'CQACAgIAAxkBAANHaUWluTVBY9v6R2dpf9o1VHJLGpgAApGTAALKbTFKhwWrBH7qkD42BA',
+        'date': '30.10.2025',
+        'artists': 'Aryx, Nng',
+        'genre': 'Phonk/Электроника',
+        'description': 'Киберпанк-версия легендарного HUDAY с неоновыми синтезаторами'
+    },
+    'world_run': {
+        'name': 'WORLD RUN PHONK',
+        'file_id': 'CQACAgIAAxkBAANJaUWl3P9Epi17pyrTZAABD1gsKLwkAAKUkwACym0xSrJw9quY1smxNgQ',
+        'date': '01.11.2025',
+        'artists': 'Aryx, Nng',
+        'genre': 'Phonk/Киберпанк',
+        'description': 'Энергетичный трек про скорость, адреналин и движение'
+    }
+}
+
+
+# ============================================================================
+# УПРАВЛЕНИЕ ДАННЫМИ ПОЛЬЗОВАТЕЛЕЙ (СОХРАНЕНИЕ В ФАЙЛ)
+# ============================================================================
+
+
+def load_users_data():
+    """Загружает данные пользователей из файла"""
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Ошибка загрузки данных: {e}")
+            return {}
+    return {}
+
+
+def save_users_data(users_data):
+    """Сохраняет данные пользователей в файл"""
+    try:
+        with open(USERS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(users_data, f, ensure_ascii=False, indent=2)
+        logger.info("✅ Данные пользователей сохранены")
+    except Exception as e:
+        logger.error(f"❌ Ошибка сохранения данных: {e}")
+
+
+# Загружаем данные при запуске
+users_data = load_users_data()
+
+
+# ============================================================================
+# ОСНОВНЫЕ ФУНКЦИИ БОТА
+# ============================================================================
+
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Команда /start"""
+    user = update.effective_user
+    chat_id = update.effective_chat.id
+
+
+    logger.info(f"👤 Пользователь {user.first_name} (ID: {user.id}) запустил /start")
+
+
+    # Сохраняем/обновляем пользователя
+    if str(chat_id) not in users_data:
+        users_data[str(chat_id)] = {
+            'user_id': user.id,
+            'username': user.username or 'unknown',
+            'first_name': user.first_name,
+            'notifications_enabled': True,
+            'join_date': datetime.now().isoformat()
+        }
+        save_users_data(users_data)
+        logger.info(f"✅ Новый пользователь добавлен: {user.first_name}")
+    else:
+        logger.info(f"📝 Пользователь вернулся: {user.first_name}")
+
+
+    keyboard = [
+        [InlineKeyboardButton("🎵 Приложение Respzona", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [
+            InlineKeyboardButton("🎵 Треки", callback_data='tracks'),
+            InlineKeyboardButton("🎟️ Билеты", callback_data='tickets')
+        ],
+        [
+            InlineKeyboardButton("🔔 Уведомления", callback_data='notifications'),
+            InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL)
+        ],
+        [InlineKeyboardButton("👥 О нас", callback_data='about')]
+    ]
+
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+
+    await update.message.reply_text(
+        f"🎶 Привет, {user.first_name}! Добро пожаловать в RESPZONA! 🎶\n\n"
+        f"Мы - музыкальная группа из Уфы и Стерлитамака.\n"
+        f"Здесь ты можешь:\n"
+        f"✨ Слушать наши треки онлайн\n"
+        f"🎤 Узнать о концертах и событиях\n"
+        f"🔔 Включить уведомления о новых релизах\n"
+        f"📱 Следить за нами в Telegram\n\n"
+        f"Выбери нужный пункт меню ниже!",
+        reply_markup=reply_markup
+    )
+
+
+async def notify_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Команда /notify - отправить уведомление о новом треке"""
+    
+    # Проверяем, что это админ
+    if update.effective_user.id != ADMIN_ID:
+        await update.message.reply_text(
+            "❌ У тебя нет прав на отправку уведомлений!\n\n"
+            "Это может делать только администратор."
+        )
+        return
+    
+    # Если аргументов нет, показываем справку
+    if not context.args:
+        await update.message.reply_text(
+            "📢 **Команда отправки уведомлений:**\n\n"
+            "Использование:\n"
+            "`/notify huday` - отправить уведомление о HUDAY\n"
+            "`/notify huday_phonk` - отправить уведомление о HUDAY PHONK\n"
+            "`/notify world_run` - отправить уведомление о WORLD RUN\n\n"
+            "**Доступные треки:**\n"
+            "🎵 huday\n"
+            "🎵 huday_phonk\n"
+            "🎵 world_run",
+            parse_mode='Markdown'
+        )
+        return
+    
+    track_id = context.args[0]
+    
+    if track_id not in TRACKS:
+        await update.message.reply_text(
+            f"❌ Трек '{track_id}' не найден!\n\n"
+            "Доступные треки: huday, huday_phonk, world_run"
+        )
+        return
+    
+    # Отправляем уведомление
+    await update.message.reply_text(
+        f"📢 Отправляю уведомление о треке '{TRACKS[track_id]['name']}'...\n"
+        f"⏳ Это может занять несколько секунд..."
+    )
+    
+    await send_track_notification(context, track_id)
+    
+    # Сообщаем о результате
+    await update.message.reply_text(
+        f"✅ Уведомление отправлено!\n\n"
+        f"📊 Проверь логи для деталей отправки"
+    )
+
+
+async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработка загруженных аудиофайлов"""
+    logger.info("🎵 ПОЛУЧЕН АУДИОФАЙЛ!")
+
+
+    try:
+        audio = update.message.audio
+        file_id = audio.file_id
+        file_name = audio.file_name or "Unknown"
+        duration = audio.duration or 0
+        user_name = update.effective_user.first_name
+
+
+        logger.info(f"📄 Файл: {file_name} | Длина: {duration}s | File ID: {file_id}")
+
+
+        response_text = (
+            f"✅ **АУДИОФАЙЛ ПОЛУЧЕН!**\n\n"
+            f"📄 **Название:** `{file_name}`\n"
+            f"⏱️ **Длина:** {duration} сек\n"
+            f"🆔 **File ID:**\n"
+            f"`{file_id}`\n\n"
+            f"✅ **Копируй File ID выше и вставь в код бота**"
+        )
+
+
+        await update.message.reply_text(
+            response_text,
+            parse_mode='Markdown'
+        )
+
+
+        logger.info(f"✅ Ответ отправлен пользователю {user_name}")
+
+
+    except Exception as e:
+        logger.error(f"❌ ОШИБКА при обработке аудио: {e}", exc_info=True)
+        await update.message.reply_text(
+            f"❌ Ошибка при обработке файла:\n\n`{str(e)}`",
+            parse_mode='Markdown'
+        )
+
+
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработка нажатий кнопок"""
+    query = update.callback_query
+    await query.answer()
+
+
+    chat_id = query.message.chat_id
+
+
+    if query.data == 'tracks':
+        await show_tracks(query, chat_id)
+    elif query.data == 'tickets':
+        await show_tickets(query, chat_id)
+    elif query.data == 'notifications':
+        await show_notifications_menu(query, chat_id)
+    elif query.data == 'toggle_notifications_action':
+        await toggle_notifications(query, chat_id)
+    elif query.data == 'about':
+        await show_about(query)
+    elif query.data == 'back_to_menu':
+        await back_to_menu(query)
+    elif query.data.startswith('play_track_'):
+        track_id = query.data.replace('play_track_', '')
+        await play_track(query, track_id, context)
+    elif query.data.startswith('info_track_'):
+        track_id = query.data.replace('info_track_', '')
+        await show_track_info(query, track_id)
+
+
+async def show_tracks(query, chat_id) -> None:
+    """Показать треки с возможностью прослушивания"""
+    keyboard = [
+        [
+            InlineKeyboardButton("🎵 HUDAY", callback_data='info_track_huday'),
+            InlineKeyboardButton("▶️ Слушать", callback_data='play_track_huday')
+        ],
+        [
+            InlineKeyboardButton("🎵 HUDAY PHONK", callback_data='info_track_huday_phonk'),
+            InlineKeyboardButton("▶️ Слушать", callback_data='play_track_huday_phonk')
+        ],
+        [
+            InlineKeyboardButton("🎵 WORLD RUN PHONK", callback_data='info_track_world_run'),
+            InlineKeyboardButton("▶️ Слушать", callback_data='play_track_world_run')
+        ],
+        [InlineKeyboardButton("✨ Midnight Glow (Скоро...)", callback_data='track_midnight_glow')],
+        [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
+    ]
+
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+
+    await query.edit_message_text(
+        text="🎵 **Наши треки:**\n\n"
+        "Выбери трек для прослушивания или информации:\n\n"
+        "🎵 HUDAY - мемный поп/рэп про пирог 🥧\n"
+        "🎵 HUDAY PHONK - киберпанк версия 🌆\n"
+        "🎵 WORLD RUN PHONK - энергетичный phonk 🏃\n"
+        "✨ Midnight Glow - атмосферная электроника (Скоро) 🌙\n\n"
+        "Нажми 'Слушать' для прослушивания или имя для подробностей:",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+
+async def play_track(query, track_id, context) -> None:
+    """Проиграть трек - отправляет аудиофайл"""
+    if track_id not in TRACKS:
+        await query.answer("❌ Трек не найден", show_alert=True)
+        return
+
+
+    track = TRACKS[track_id]
+
+
+    if track['file_id'] is None:
+        await query.answer(
+            "⚠️ Трек еще не загружен в бота\n\n"
+            "Как добавить трек:\n"
+            "1️⃣ Отправь аудиофайл боту\n"
+            "2️⃣ Скопируй File ID из ответа\n"
+            "3️⃣ Вставь в код TRACKS\n\n"
+            "📱 Слушай на @PIRACTIVE",
+            show_alert=True
+        )
+    else:
+        try:
+            await context.bot.send_audio(
+                chat_id=query.message.chat_id,
+                audio=track['file_id'],
+                title=track['name'],
+                performer='RESPZONA',
+                duration=None
+            )
+            await query.answer(f"▶️ Проигрывается: {track['name']}")
+        except Exception as e:
+            logger.error(f"Ошибка воспроизведения трека: {e}")
+            await query.answer(
+                "❌ Ошибка при загрузке трека\n\n"
+                "Слушай в Telegram @PIRACTIVE",
+                show_alert=True
+            )
+
+
+async def show_track_info(query, track_id) -> None:
+    """Показать информацию о треке"""
+    if track_id not in TRACKS:
+        await query.edit_message_text(text="❌ Трек не найден")
+        return
+
+
+    track = TRACKS[track_id]
+
+
+    keyboard = [
+        [InlineKeyboardButton("▶️ Слушать трек", callback_data=f'play_track_{track_id}')],
+        [InlineKeyboardButton("⬅️ Назад к трекам", callback_data='tracks')]
+    ]
+
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+
+    await query.edit_message_text(
+        text=f"🎵 **{track['name']}** 🎵\n\n"
+        f"📅 **Дата релиза:** {track['date']}\n"
+        f"🎤 **Исполнители:** {track['artists']}\n"
+        f"🎸 **Жанр:** {track['genre']}\n\n"
+        f"📝 **О треке:**\n"
+        f"{track['description']}\n\n"
+        f"🔗 **Слушай в Telegram:**\n"
+        f"📱 {TELEGRAM_URL}",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+
+async def show_tickets(query, chat_id) -> None:
+    """Показать билеты"""
+    keyboard = [
+        [InlineKeyboardButton("🎟️ Купить билеты (Скоро...)", callback_data='buy_tickets')],
+        [InlineKeyboardButton("📅 Предстоящие события (Скоро...)", callback_data='upcoming_events')],
+        [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
+    ]
+
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+
+    await query.edit_message_text(
+        text="🎟️ **Билеты и события:**\n\n"
+        "Функция покупки билетов находится в разработке 🚀\n\n"
+        "Скоро вы сможете:\n"
+        "✓ Покупать билеты на наши концерты\n"
+        "✓ Узнавать о предстоящих событиях\n"
+        "✓ Получать приоритетный доступ к билетам\n\n"
+        "Подпишитесь на уведомления, чтобы не пропустить!",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+
+async def show_notifications_menu(query, chat_id) -> None:
+    """Показать статус уведомлений БЕЗ ПЕРЕКЛЮЧЕНИЯ"""
+    chat_id_str = str(chat_id)
+    
+    if chat_id_str not in users_data:
+        users_data[chat_id_str] = {
+            'user_id': query.from_user.id,
+            'username': query.from_user.username or 'unknown',
+            'first_name': query.from_user.first_name,
+            'notifications_enabled': True,
+            'join_date': datetime.now().isoformat()
+        }
+        save_users_data(users_data)
+    
+    # ✅ ПОЛУЧАЕМ ТЕКУЩИЙ СТАТУС (БЕЗ ПЕРЕКЛЮЧЕНИЯ)
+    current_status = users_data[chat_id_str]['notifications_enabled']
+    
+    # Показываем текущий статус
+    status_text = "✅ ВКЛЮЧЕНЫ" if current_status else "❌ ОТКЛЮЧЕНЫ"
+    status_icon = "🟢" if current_status else "⭕"
+    
+    # Текст кнопки зависит от текущего статуса
+    button_text = "❌ ОТКЛЮЧИТЬ уведомления" if current_status else "✅ ВКЛЮЧИТЬ уведомления"
+
+
+    logger.info(f"🔔 Показываю статус уведомлений пользователю {chat_id}: {current_status}")
+
+
+    keyboard = [
+        [InlineKeyboardButton(button_text, callback_data='toggle_notifications_action')],
+        [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
+    ]
+
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+
+    await query.edit_message_text(
+        text=f"🔔 **Уведомления о новых релизах:**\n\n"
+        f"{status_icon} Текущий статус: {status_text}\n\n"
+        f"Когда выйдет новый трек, ты получишь:\n"
+        f"🎵 Название трека\n"
+        f"📅 Дату релиза\n"
+        f"🎤 Информацию об артистах\n"
+        f"🎸 Жанр трека\n"
+        f"📝 Полное описание\n"
+        f"🎧 Аудиофайл для прослушивания\n\n"
+        f"💾 **Статус сохранен!** Останется таким пока ты его не измениш",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+
+async def toggle_notifications(query, chat_id) -> None:
+    """ПЕРЕКЛЮЧИТЬ уведомления и сохранить в файл"""
+    chat_id_str = str(chat_id)
+    
+    if chat_id_str in users_data:
+        # Переключаем статус
+        current_status = users_data[chat_id_str]['notifications_enabled']
+        users_data[chat_id_str]['notifications_enabled'] = not current_status
+        
+        # ✅ СОХРАНЯЕМ ИЗМЕНЕНИЯ В ФАЙЛ
+        save_users_data(users_data)
+        
+        new_status = users_data[chat_id_str]['notifications_enabled']
+        status_text = "✅ ВКЛЮЧЕНЫ" if new_status else "❌ ОТКЛЮЧЕНЫ"
+        status_icon = "🟢" if new_status else "⭕"
+
+
+        logger.info(f"🔔 Уведомления переключены для {chat_id}: {new_status}")
+
+
+        keyboard = [
+            [InlineKeyboardButton("🔔 Уведомления", callback_data='notifications')],
+            [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
+        ]
+
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+
+        await query.edit_message_text(
+            text=f"🔔 **Уведомления о новых релизах:**\n\n"
+            f"{status_icon} Статус: {status_text}\n\n"
+            f"Когда выйдет новый трек, ты получишь:\n"
+            f"🎵 Название трека\n"
+            f"📅 Дату релиза\n"
+            f"🎤 Информацию об артистах\n"
+            f"🎸 Жанр трека\n"
+            f"📝 Полное описание\n"
+            f"🎧 Аудиофайл для прослушивания\n\n"
+            f"💾 **Статус сохранен!** Останется таким пока ты его не измениш",
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+
+
+async def show_about(query) -> None:
+    """О группе"""
+    keyboard = [
+        [InlineKeyboardButton("📱 Telegram канал", url=TELEGRAM_URL)],
+        [InlineKeyboardButton("🎬 YouTube канал", url=YOUTUBE_URL)],
+        [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
+    ]
+
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+
+    await query.edit_message_text(
+        text="👥 **О RESPZONA:**\n\n"
+        "RESPZONA - музыкальная группа из Уфы и Стерлитамака 🎶\n\n"
+        "**Ведущие проекта:**\n"
+        "⭐ Aryx (Арсен) - главный идеолог, социальные сети, превью\n"
+        "⭐ Nng (Дамир) - главный идеолог, тексты, event-менеджер\n"
+        "🎸 nRIS (Радмир) - помощник, оценщик идей\n\n"
+        "**Наш стиль:** Pop/Rap/Phonk/Electronic 🎵\n\n"
+        "**Следи за нами:**\n"
+        "📱 Telegram: https://t.me/PIRACTIVE\n"
+        "🎬 YouTube: https://www.youtube.com/@ANTWOORDMUS\n"
+        "📧 Email: resp.zona@bk.ru\n\n"
+        "Спасибо, что слушаешь RESPZONA! ❤️",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+
+async def back_to_menu(query) -> None:
+    """Вернуться в главное меню"""
+    keyboard = [
+        [InlineKeyboardButton("🎵 Приложение Respzona", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [
+            InlineKeyboardButton("🎵 Треки", callback_data='tracks'),
+            InlineKeyboardButton("🎟️ Билеты", callback_data='tickets')
+        ],
+        [
+            InlineKeyboardButton("🔔 Уведомления", callback_data='notifications'),
+            InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL)
+        ],
+        [InlineKeyboardButton("👥 О нас", callback_data='about')]
+    ]
+
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+
+    await query.edit_message_text(
+        text="🎶 **RESPZONA - главное меню** 🎶\n\n"
+        "Выбери нужный пункт:",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработка текстовых сообщений"""
+    user_message = update.message.text.lower()
+
+
+    logger.info(f"📝 Текстовое сообщение: {user_message}")
+
+
+    if 'привет' in user_message:
+        await update.message.reply_text("Привет! 👋 Используй /start для открытия меню")
+    elif 'трек' in user_message or 'музыка' in user_message:
+        await update.message.reply_text("Нажми кнопку 🎵 Треки для просмотра наших треков!")
+    else:
+        await update.message.reply_text(
+            "Не поняла команду 🤔\n"
+            "Используй /start для открытия меню"
+        )
+
+
+async def send_track_notification(context: ContextTypes.DEFAULT_TYPE, track_id: str) -> None:
+    """Отправить уведомление о новом треке всем, кто включил уведомления"""
+    if track_id not in TRACKS:
+        logger.error(f"❌ Трек {track_id} не найден")
+        return
+
+
+    track = TRACKS[track_id]
+    sent_count = 0
+    failed_count = 0
+
+
+    for chat_id_str, user_data in users_data.items():
+        # ✅ ПРОВЕРЯЕМ, ВКЛЮЧЕНЫ ЛИ УВЕДОМЛЕНИЯ
+        if user_data.get('notifications_enabled', True):
+            try:
+                chat_id = int(chat_id_str)
+
+
+                notification_text = (
+                    f"🎵 **НОВЫЙ ТРЕК ВЫПУЩЕН!** 🎵\n\n"
+                    f"{'='*50}\n"
+                    f"🎵 **{track['name']}**\n"
+                    f"{'='*50}\n\n"
+                    f"📅 **Дата релиза:** {track['date']}\n"
+                    f"🎤 **Исполнители:** {track['artists']}\n"
+                    f"🎸 **Жанр:** {track['genre']}\n\n"
+                    f"📝 **О треке:**\n"
+                    f"{track['description']}\n\n"
+                    f"🎧 Слушай трек ниже 👇"
+                )
+
+
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=notification_text,
+                    parse_mode='Markdown'
+                )
+
+
+                if track['file_id'] is not None:
+                    await context.bot.send_audio(
+                        chat_id=chat_id,
+                        audio=track['file_id'],
+                        title=track['name'],
+                        performer='RESPZONA'
+                    )
+
+
+                sent_count += 1
+                logger.info(f"✅ Уведомление отправлено пользователю {chat_id}")
+
+
+            except Exception as e:
+                failed_count += 1
+                logger.error(f"❌ Ошибка отправки уведомления пользователю {chat_id_str}: {e}")
+
+
+    logger.info(f"📊 Уведомления: отправлено {sent_count}, ошибок {failed_count}")
+
+
+def main() -> None:
+    """Запуск бота"""
+    logger.info("=" * 50)
+    logger.info("🚀 ЗАПУСК БОТА RESPZONA")
+    logger.info(f"📊 Загружено {len(users_data)} пользователей")
+    logger.info("=" * 50)
+
+
+    application = Application.builder().token(TOKEN).build()
+
+
+    # Команды
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("notify", notify_handler))
+    logger.info("✅ Обработчик /start добавлен")
+    logger.info("✅ Обработчик /notify добавлен")
+
+
+    # Обработчик аудиофайлов
+    application.add_handler(MessageHandler(filters.AUDIO, handle_audio))
+    logger.info("✅ Обработчик AUDIO добавлен")
+
+
+    # Callback кнопки
+    application.add_handler(CallbackQueryHandler(button_callback))
+    logger.info("✅ Обработчик CALLBACK добавлен")
+
+
+    # Текстовые сообщения
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    logger.info("✅ Обработчик TEXT добавлен")
+
+
+    logger.info("🎵 БОТ ГОТОВ К РАБОТЕ!")
+    logger.info("=" * 50)
+
+
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
+
+
+if __name__ == '__main__':
+    main()
