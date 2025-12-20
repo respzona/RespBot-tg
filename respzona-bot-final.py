@@ -5,19 +5,13 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppI
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 from datetime import datetime
 
-
-
 # Логирование с подробностью
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 
-
-
 logger = logging.getLogger(__name__)
-
-
 
 # ✅ ПРАВИЛЬНО: Прямое присвоение токена
 TOKEN = "8501298263:AAFsKnHjy9ha9pWji7j36kfQ3e5za01aYdQ"
@@ -25,17 +19,11 @@ WEBAPP_URL = "https://verdant-paprenjak-887d4a.netlify.app/"
 TELEGRAM_URL = "https://t.me/PIRACTIVE"
 YOUTUBE_URL = "https://www.youtube.com/@ANTWOORDMUS"
 
-
-
 # Файл для сохранения данных пользователей
 USERS_FILE = "users_data.json"
 
-
-
 # ✅ ТВОЙ ID (установлен автоматически)
 ADMIN_ID = 8026939529
-
-
 
 # Медиафайлы треков с поддержкой воспроизведения
 TRACKS = {
@@ -65,13 +53,9 @@ TRACKS = {
     }
 }
 
-
-
 # ============================================================================
 # УПРАВЛЕНИЕ ДАННЫМИ ПОЛЬЗОВАТЕЛЕЙ (СОХРАНЕНИЕ В ФАЙЛ)
 # ============================================================================
-
-
 
 def load_users_data():
     """Загружает данные пользователей из файла"""
@@ -84,8 +68,6 @@ def load_users_data():
             return {}
     return {}
 
-
-
 def save_users_data(users_data):
     """Сохраняет данные пользователей в файл"""
     try:
@@ -95,29 +77,19 @@ def save_users_data(users_data):
     except Exception as e:
         logger.error(f"❌ Ошибка сохранения данных: {e}")
 
-
-
 # Загружаем данные при запуске
 users_data = load_users_data()
-
-
 
 # ============================================================================
 # ОСНОВНЫЕ ФУНКЦИИ БОТА
 # ============================================================================
-
-
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Команда /start"""
     user = update.effective_user
     chat_id = update.effective_chat.id
 
-
-
     logger.info(f"👤 Пользователь {user.first_name} (ID: {user.id}) запустил /start")
-
-
 
     # Сохраняем/обновляем пользователя
     if str(chat_id) not in users_data:
@@ -133,13 +105,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     else:
         logger.info(f"📝 Пользователь вернулся: {user.first_name}")
 
-
-
     keyboard = [
         [InlineKeyboardButton("🎵 Приложение Respzona", web_app=WebAppInfo(url=WEBAPP_URL))],
         [
             InlineKeyboardButton("🎵 Треки", callback_data='tracks'),
-            InlineKeyboardButton("🎟️ Билеты", callback_data='tickets')
+            InlineKeyboardButton("🎟️ Билеты и События", callback_data='tickets')
         ],
         [
             InlineKeyboardButton("🔔 Уведомления", callback_data='notifications'),
@@ -148,11 +118,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         [InlineKeyboardButton("👥 О нас", callback_data='about')]
     ]
 
-
-
     reply_markup = InlineKeyboardMarkup(keyboard)
-
-
 
     await update.message.reply_text(
         f"🎶 Привет, {user.first_name}! Добро пожаловать в RESPZONA! 🎶\n\n"
@@ -165,8 +131,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"Выбери нужный пункт меню ниже!",
         reply_markup=reply_markup
     )
-
-
 
 async def notify_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Команда /notify - отправить уведомление о новом треке"""
@@ -218,13 +182,9 @@ async def notify_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         f"📊 Проверь логи для деталей отправки"
     )
 
-
-
 async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработка загруженных аудиофайлов"""
     logger.info("🎵 ПОЛУЧЕН АУДИОФАЙЛ!")
-
-
 
     try:
         audio = update.message.audio
@@ -233,11 +193,7 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         duration = audio.duration or 0
         user_name = update.effective_user.first_name
 
-
-
         logger.info(f"📄 Файл: {file_name} | Длина: {duration}s | File ID: {file_id}")
-
-
 
         response_text = (
             f"✅ **АУДИОФАЙЛ ПОЛУЧЕН!**\n\n"
@@ -248,18 +204,12 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             f"✅ **Копируй File ID выше и вставь в код бота**"
         )
 
-
-
         await update.message.reply_text(
             response_text,
             parse_mode='Markdown'
         )
 
-
-
         logger.info(f"✅ Ответ отправлен пользователю {user_name}")
-
-
 
     except Exception as e:
         logger.error(f"❌ ОШИБКА при обработке аудио: {e}", exc_info=True)
@@ -268,23 +218,19 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             parse_mode='Markdown'
         )
 
-
-
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработка нажатий кнопок"""
     query = update.callback_query
     await query.answer()
 
-
-
     chat_id = query.message.chat_id
-
-
 
     if query.data == 'tracks':
         await show_tracks(query, chat_id)
     elif query.data == 'tickets':
         await show_tickets(query, chat_id)
+    elif query.data == 'upcoming_events':  # ✅ ОБРАБОТКА НОВОЙ КНОПКИ
+        await show_events(query, chat_id)
     elif query.data == 'notifications':
         await show_notifications_menu(query, chat_id)
     elif query.data == 'toggle_notifications_action':
@@ -299,8 +245,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     elif query.data.startswith('info_track_'):
         track_id = query.data.replace('info_track_', '')
         await show_track_info(query, track_id)
-
-
 
 async def show_tracks(query, chat_id) -> None:
     """Показать треки с возможностью прослушивания"""
@@ -321,11 +265,7 @@ async def show_tracks(query, chat_id) -> None:
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
 
-
-
     reply_markup = InlineKeyboardMarkup(keyboard)
-
-
 
     await query.edit_message_text(
         text="🎵 **Наши треки:**\n\n"
@@ -339,19 +279,13 @@ async def show_tracks(query, chat_id) -> None:
         parse_mode='Markdown'
     )
 
-
-
 async def play_track(query, track_id, context) -> None:
     """Проиграть трек - отправляет аудиофайл"""
     if track_id not in TRACKS:
         await query.answer("❌ Трек не найден", show_alert=True)
         return
 
-
-
     track = TRACKS[track_id]
-
-
 
     if track['file_id'] is None:
         await query.answer(
@@ -381,30 +315,20 @@ async def play_track(query, track_id, context) -> None:
                 show_alert=True
             )
 
-
-
 async def show_track_info(query, track_id) -> None:
     """Показать информацию о треке"""
     if track_id not in TRACKS:
         await query.edit_message_text(text="❌ Трек не найден")
         return
 
-
-
     track = TRACKS[track_id]
-
-
 
     keyboard = [
         [InlineKeyboardButton("▶️ Слушать трек", callback_data=f'play_track_{track_id}')],
         [InlineKeyboardButton("⬅️ Назад к трекам", callback_data='tracks')]
     ]
 
-
-
     reply_markup = InlineKeyboardMarkup(keyboard)
-
-
 
     await query.edit_message_text(
         text=f"🎵 **{track['name']}** 🎵\n\n"
@@ -419,35 +343,49 @@ async def show_track_info(query, track_id) -> None:
         parse_mode='Markdown'
     )
 
-
-
 async def show_tickets(query, chat_id) -> None:
-    """Показать билеты"""
+    """Показать меню билетов и событий"""
     keyboard = [
+        [InlineKeyboardButton("📅 Предстоящие события", callback_data='upcoming_events')],
         [InlineKeyboardButton("🎟️ Купить билеты (Скоро...)", callback_data='buy_tickets')],
-        [InlineKeyboardButton("📅 Предстоящие события (Скоро...)", callback_data='upcoming_events')],
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
 
-
-
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-
-
     await query.edit_message_text(
-        text="🎟️ **Билеты и события:**\n\n"
-        "Функция покупки билетов находится в разработке 🚀\n\n"
-        "Скоро вы сможете:\n"
-        "✓ Покупать билеты на наши концерты\n"
-        "✓ Узнавать о предстоящих событиях\n"
-        "✓ Получать приоритетный доступ к билетам\n\n"
-        "Подпишитесь на уведомления, чтобы не пропустить!",
+        text="🎟️ **Билеты и события RESPZONA:**\n\n"
+        "Здесь ты можешь узнать о наших планах, концертах и стримах.\n\n"
+        "👇 Жми **'Предстоящие события'**, чтобы узнать, что будет дальше!\n\n"
+        "Функция покупки билетов пока в разработке 🚀",
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
 
+async def show_events(query, chat_id) -> None:
+    """✅ НОВАЯ ФУНКЦИЯ: Показать список предстоящих событий"""
+    keyboard = [
+        [InlineKeyboardButton("🎬 YouTube Канал", url=YOUTUBE_URL)],
+        [InlineKeyboardButton("⬅️ Назад", callback_data='tickets')]
+    ]
 
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text="📅 **ПРЕДСТОЯЩИЕ СОБЫТИЯ:**\n\n"
+             "🎥 **БОЛЬШОЙ НОВОГОДНИЙ СТРИМ**\n"
+             "🗓️ **Дата:** 7 Января\n"
+             "📍 **Место:** Стерлитамак (Online)\n"
+             "📱 **Где:** TikTok и YouTube\n"
+             "📝 Будем общаться, отвечать на вопросы и играть музыку!\n\n"
+             "〰️〰️〰️〰️〰️〰️〰️\n\n"
+             "🎵 **РЕЛИЗ НОВОГО ТРЕКА**\n"
+             "🗓️ **Дата:** 🔒 СЕКРЕТ\n"
+             "🤫 Готовим для вас что-то очень мощное...\n\n"
+             "🔔 Включи уведомления, чтобы не пропустить дату релиза!",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
 
 async def show_notifications_menu(query, chat_id) -> None:
     """Показать статус уведомлений БЕЗ ПЕРЕКЛЮЧЕНИЯ"""
@@ -473,22 +411,14 @@ async def show_notifications_menu(query, chat_id) -> None:
     # Текст кнопки зависит от текущего статуса
     button_text = "❌ ОТКЛЮЧИТЬ уведомления" if current_status else "✅ ВКЛЮЧИТЬ уведомления"
 
-
-
     logger.info(f"🔔 Показываю статус уведомлений пользователю {chat_id}: {current_status}")
-
-
 
     keyboard = [
         [InlineKeyboardButton(button_text, callback_data='toggle_notifications_action')],
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
 
-
-
     reply_markup = InlineKeyboardMarkup(keyboard)
-
-
 
     await query.edit_message_text(
         text=f"🔔 **Уведомления о новых релизах:**\n\n"
@@ -504,8 +434,6 @@ async def show_notifications_menu(query, chat_id) -> None:
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
-
-
 
 async def toggle_notifications(query, chat_id) -> None:
     """ПЕРЕКЛЮЧИТЬ уведомления и сохранить в файл"""
@@ -523,22 +451,14 @@ async def toggle_notifications(query, chat_id) -> None:
         status_text = "✅ ВКЛЮЧЕНЫ" if new_status else "❌ ОТКЛЮЧЕНЫ"
         status_icon = "🟢" if new_status else "⭕"
 
-
-
         logger.info(f"🔔 Уведомления переключены для {chat_id}: {new_status}")
-
-
 
         keyboard = [
             [InlineKeyboardButton("🔔 Уведомления", callback_data='notifications')],
             [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
         ]
 
-
-
         reply_markup = InlineKeyboardMarkup(keyboard)
-
-
 
         await query.edit_message_text(
             text=f"🔔 **Уведомления о новых релизах:**\n\n"
@@ -555,8 +475,6 @@ async def toggle_notifications(query, chat_id) -> None:
             parse_mode='Markdown'
         )
 
-
-
 async def show_about(query) -> None:
     """О группе"""
     keyboard = [
@@ -565,11 +483,7 @@ async def show_about(query) -> None:
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
 
-
-
     reply_markup = InlineKeyboardMarkup(keyboard)
-
-
 
     await query.edit_message_text(
         text="👥 **О RESPZONA:**\n\n"
@@ -588,15 +502,13 @@ async def show_about(query) -> None:
         parse_mode='Markdown'
     )
 
-
-
 async def back_to_menu(query) -> None:
     """Вернуться в главное меню"""
     keyboard = [
         [InlineKeyboardButton("🎵 Приложение Respzona", web_app=WebAppInfo(url=WEBAPP_URL))],
         [
             InlineKeyboardButton("🎵 Треки", callback_data='tracks'),
-            InlineKeyboardButton("🎟️ Билеты", callback_data='tickets')
+            InlineKeyboardButton("🎟️ Билеты и События", callback_data='tickets')
         ],
         [
             InlineKeyboardButton("🔔 Уведомления", callback_data='notifications'),
@@ -605,11 +517,7 @@ async def back_to_menu(query) -> None:
         [InlineKeyboardButton("👥 О нас", callback_data='about')]
     ]
 
-
-
     reply_markup = InlineKeyboardMarkup(keyboard)
-
-
 
     await query.edit_message_text(
         text="🎶 **RESPZONA - главное меню** 🎶\n\n"
@@ -618,17 +526,11 @@ async def back_to_menu(query) -> None:
         parse_mode='Markdown'
     )
 
-
-
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработка текстовых сообщений"""
     user_message = update.message.text.lower()
 
-
-
     logger.info(f"📝 Текстовое сообщение: {user_message}")
-
-
 
     if 'привет' in user_message:
         await update.message.reply_text("Привет! 👋 Используй /start для открытия меню")
@@ -640,29 +542,21 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             "Используй /start для открытия меню"
         )
 
-
-
 async def send_track_notification(context: ContextTypes.DEFAULT_TYPE, track_id: str) -> None:
     """Отправить уведомление о новом треке всем, кто включил уведомления"""
     if track_id not in TRACKS:
         logger.error(f"❌ Трек {track_id} не найден")
         return
 
-
-
     track = TRACKS[track_id]
     sent_count = 0
     failed_count = 0
-
-
 
     for chat_id_str, user_data in users_data.items():
         # ✅ ПРОВЕРЯЕМ, ВКЛЮЧЕНЫ ЛИ УВЕДОМЛЕНИЯ
         if user_data.get('notifications_enabled', True):
             try:
                 chat_id = int(chat_id_str)
-
-
 
                 notification_text = (
                     f"🎵 **НОВЫЙ ТРЕК ВЫПУЩЕН!** 🎵\n\n"
@@ -677,15 +571,11 @@ async def send_track_notification(context: ContextTypes.DEFAULT_TYPE, track_id: 
                     f"🎧 Слушай трек ниже 👇"
                 )
 
-
-
                 await context.bot.send_message(
                     chat_id=chat_id,
                     text=notification_text,
                     parse_mode='Markdown'
                 )
-
-
 
                 if track['file_id'] is not None:
                     await context.bot.send_audio(
@@ -695,22 +585,14 @@ async def send_track_notification(context: ContextTypes.DEFAULT_TYPE, track_id: 
                         performer='RESPZONA'
                     )
 
-
-
                 sent_count += 1
                 logger.info(f"✅ Уведомление отправлено пользователю {chat_id}")
-
-
 
             except Exception as e:
                 failed_count += 1
                 logger.error(f"❌ Ошибка отправки уведомления пользователю {chat_id_str}: {e}")
 
-
-
     logger.info(f"📊 Уведомления: отправлено {sent_count}, ошибок {failed_count}")
-
-
 
 def main() -> None:
     """Запуск бота"""
@@ -719,11 +601,7 @@ def main() -> None:
     logger.info(f"📊 Загружено {len(users_data)} пользователей")
     logger.info("=" * 50)
 
-
-
     application = Application.builder().token(TOKEN).build()
-
-
 
     # Команды
     application.add_handler(CommandHandler("start", start))
@@ -731,34 +609,22 @@ def main() -> None:
     logger.info("✅ Обработчик /start добавлен")
     logger.info("✅ Обработчик /notify добавлен")
 
-
-
     # Обработчик аудиофайлов
     application.add_handler(MessageHandler(filters.AUDIO, handle_audio))
     logger.info("✅ Обработчик AUDIO добавлен")
-
-
 
     # Callback кнопки
     application.add_handler(CallbackQueryHandler(button_callback))
     logger.info("✅ Обработчик CALLBACK добавлен")
 
-
-
     # Текстовые сообщения
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     logger.info("✅ Обработчик TEXT добавлен")
 
-
-
     logger.info("🎵 БОТ ГОТОВ К РАБОТЕ!")
     logger.info("=" * 50)
 
-
-
     application.run_polling(allowed_updates=Update.ALL_TYPES)
-
-
 
 if __name__ == '__main__':
     main()
