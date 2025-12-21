@@ -6,16 +6,20 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 from datetime import datetime
 
 
+
 # Логирование с подробностью
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 
+
 logger = logging.getLogger(__name__)
+
 
 # ✅ ПРЯМОЙ ТОКЕН
 TOKEN = "8501298263:AAFsKnHjy9ha9pWji7j36kfQ3e5za01aYdQ"
+
 
 WEBAPP_URL = "https://verdant-paprenjak-887d4a.netlify.app/"
 TELEGRAM_URL = "https://t.me/RESPZONA"
@@ -24,18 +28,23 @@ TIKTOK_URL = "https://www.tiktok.com/@respozona"
 YOUTUBE_STREAM_URL = "https://www.youtube.com/live/RESPZONA"
 TIKTOK_STREAM_URL = "https://www.tiktok.com/@respozona/live"
 
+
 # ⭐ ССЫЛКИ НА ПОДДЕРЖКУ
 YOOMONEY_URL = "https://yoomoney.ru/to/4100118663676748"  # ✅ ТВОЙ НОМЕР YooMoney
 MERCH_URL = "https://respzona-merch.printful.com/"  # ЗАМЕНИ НА СВОЙ МАГАЗИН PRINTFUL
+
 
 # Реквизиты
 CARD_NUMBER = "2200 7019 4251 1996"
 CARD_HOLDER = "RESPZONA"
 
+
 USERS_FILE = "users_data.json"
+
 
 # Твой админ-ID
 ADMIN_ID = 8026939529
+
 
 # Треки
 TRACKS = {
@@ -73,6 +82,7 @@ TRACKS = {
     }
 }
 
+
 # События
 EVENTS = [
     {
@@ -88,9 +98,11 @@ EVENTS = [
 ]
 
 
+
 # ====================================================================
 # Работа с пользователями
 # ====================================================================
+
 
 def load_users_data():
     if os.path.exists(USERS_FILE):
@@ -103,6 +115,7 @@ def load_users_data():
     return {}
 
 
+
 def save_users_data(users_data):
     try:
         with open(USERS_FILE, 'w', encoding='utf-8') as f:
@@ -112,18 +125,23 @@ def save_users_data(users_data):
         logger.error(f"❌ Ошибка сохранения данных: {e}")
 
 
+
 users_data = load_users_data()
+
 
 
 # ====================================================================
 # Команды
 # ====================================================================
 
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     chat_id = update.effective_chat.id
 
+
     logger.info(f"👤 Пользователь {user.first_name} (ID: {user.id}) запустил /start")
+
 
     if str(chat_id) not in users_data:
         users_data[str(chat_id)] = {
@@ -137,6 +155,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         logger.info(f"✅ Новый пользователь добавлен: {user.first_name}")
     else:
         logger.info(f"📝 Пользователь вернулся: {user.first_name}")
+
 
     keyboard = [
         [InlineKeyboardButton("🎵 Приложение Respzona", web_app=WebAppInfo(url=WEBAPP_URL))],
@@ -155,6 +174,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
+
     await update.message.reply_text(
         f"🎶 Привет, {user.first_name}! Добро пожаловать в RESPZONA! 🎶\n\n"
         f"Мы - музыкальная группа из Уфы и Стерлитамака.\n"
@@ -169,6 +189,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+
 async def notify_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_user.id != ADMIN_ID:
         await update.message.reply_text(
@@ -176,6 +197,7 @@ async def notify_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             "Это может делать только администратор."
         )
         return
+
 
     if not context.args:
         await update.message.reply_text(
@@ -194,6 +216,7 @@ async def notify_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
         return
 
+
     track_id = context.args[0]
     if track_id not in TRACKS:
         await update.message.reply_text(
@@ -202,12 +225,15 @@ async def notify_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
         return
 
+
     await update.message.reply_text(
         f"📢 Отправляю уведомление о треке '{TRACKS[track_id]['name']}'...\n"
         f"⏳ Это может занять несколько секунд..."
     )
 
+
     await send_track_notification(context, track_id)
+
 
     await update.message.reply_text(
         f"✅ Уведомление отправлено!\n\n"
@@ -215,58 +241,130 @@ async def notify_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
 
 
+
 async def broadcast_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    ✅ ФУНКЦИЯ /broadcast - отправка рассылки всем пользователям
+    
+    Использование:
+    /broadcast Привет, это сообщение для всех!
+    /broadcast 🎉 Новый трек выпущен!
+    """
+    
+    # ✅ Проверка прав администратора
     if update.effective_user.id != ADMIN_ID:
-        await update.message.reply_text("❌ У тебя нет прав на отправку уведомлений!")
+        await update.message.reply_text(
+            "❌ У тебя нет прав на отправку рассылок!\n\n"
+            "Это может делать только администратор."
+        )
+        logger.warning(f"⚠️ Попытка рассылки от неавторизованного пользователя: {update.effective_user.id}")
         return
 
+
+    # ✅ Проверка наличия сообщения
     if not context.args:
         await update.message.reply_text(
             "📢 **Команда отправки своего сообщения:**\n\n"
             "Использование:\n"
             "`/broadcast Ваше сообщение здесь`\n\n"
-            "Сообщение будет отправлено всем, кто включил уведомления ✅",
+            "Примеры:\n"
+            "`/broadcast 🎉 Новый трек выпущен!`\n"
+            "`/broadcast Привет всем! Спасибо за поддержку ❤️`\n\n"
+            "Сообщение будет отправлено всем, у кого включены уведомления ✅",
             parse_mode='Markdown'
         )
         return
 
-    message_text = ' '.join(context.args)
 
+    # ✅ Формирование сообщения
+    message_text = ' '.join(context.args)
+    
+    
+    # ✅ Проверка длины сообщения
+    if len(message_text) > 4096:
+        await update.message.reply_text(
+            f"❌ Сообщение слишком длинное!\n\n"
+            f"Максимум: 4096 символов\n"
+            f"Ваше сообщение: {len(message_text)} символов"
+        )
+        return
+
+
+    # ✅ Информирование админа о начале рассылки
     await update.message.reply_text(
-        f"📢 Отправляю сообщение:\n\n`{message_text}`\n\n"
+        f"📢 **Отправляю рассылку:**\n\n"
+        f"```\n{message_text}\n```\n\n"
         f"⏳ Это может занять несколько секунд...",
         parse_mode='Markdown'
     )
 
+
+    # ✅ Счетчики отправки
     sent_count = 0
     failed_count = 0
+    blocked_count = 0
 
+
+    # ✅ Отправка сообщения каждому пользователю
     for chat_id_str, user_data in users_data.items():
+        # Проверка включены ли уведомления
         if user_data.get('notifications_enabled', True):
             try:
                 chat_id = int(chat_id_str)
+                
+                # Отправка сообщения
                 await context.bot.send_message(
                     chat_id=chat_id,
-                    text=f"📢 **НОВОЕ СООБЩЕНИЕ:**\n\n{message_text}",
+                    text=f"📢 **НОВОЕ СООБЩЕНИЕ ОТ RESPZONA:**\n\n{message_text}",
                     parse_mode='Markdown'
                 )
                 sent_count += 1
-                logger.info(f"✅ Сообщение отправлено пользователю {chat_id}")
+                logger.info(f"✅ Сообщение отправлено пользователю {chat_id} (@{user_data.get('username', 'unknown')})")
+                
             except Exception as e:
-                failed_count += 1
-                logger.error(f"❌ Ошибка отправки сообщения {chat_id_str}: {e}")
+                error_msg = str(e).lower()
+                
+                # ✅ Обработка ошибок
+                if 'blocked' in error_msg or 'forbidden' in error_msg:
+                    blocked_count += 1
+                    logger.warning(f"🚫 Пользователь {chat_id_str} заблокировал бота")
+                    # Отключаем уведомления для заблокировавшего бота
+                    user_data['notifications_enabled'] = False
+                    save_users_data(users_data)
+                else:
+                    failed_count += 1
+                    logger.error(f"❌ Ошибка отправки сообщения {chat_id_str}: {e}")
 
-    await update.message.reply_text(
-        f"✅ **Отправка завершена!**\n\n"
-        f"✅ Доставлено: {sent_count}\n"
-        f"❌ Ошибок: {failed_count}",
-        parse_mode='Markdown'
+
+    # ✅ Сохранение обновленных данных
+    save_users_data(users_data)
+
+
+    # ✅ Отправка подробного отчета админу
+    report_text = (
+        f"✅ **РАССЫЛКА ЗАВЕРШЕНА!**\n\n"
+        f"📊 **Статистика:**\n"
+        f"✅ Доставлено: **{sent_count}**\n"
+        f"❌ Ошибок: **{failed_count}**\n"
+        f"🚫 Заблокировано: **{blocked_count}**\n"
+        f"📈 Всего пользователей: **{len(users_data)}**\n\n"
+        f"💬 **Отправленное сообщение:**\n"
+        f"```\n{message_text}\n```"
     )
+    
+    await update.message.reply_text(report_text, parse_mode='Markdown')
+    
+    logger.info(
+        f"📊 РАССЫЛКА ЗАВЕРШЕНА: "
+        f"Доставлено {sent_count}, Ошибок {failed_count}, Заблокировано {blocked_count}"
+    )
+
 
 
 # ====================================================================
 # Медиа / треки / события
 # ====================================================================
+
 
 async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info("🎵 ПОЛУЧЕН АУДИОФАЙЛ!")
@@ -277,7 +375,9 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         duration = audio.duration or 0
         user_name = update.effective_user.first_name
 
+
         logger.info(f"📄 Файл: {file_name} | Длина: {duration}s | File ID: {file_id}")
+
 
         response_text = (
             f"✅ **АУДИОФАЙЛ ПОЛУЧЕН!**\n\n"
@@ -287,6 +387,7 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             f"`{file_id}`\n\n"
             f"✅ **Копируй File ID выше и вставь в код бота**"
         )
+
 
         await update.message.reply_text(response_text, parse_mode='Markdown')
         logger.info(f"✅ Ответ отправлен пользователю {user_name}")
@@ -298,11 +399,14 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
 
 
+
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
 
+
     chat_id = query.message.chat_id
+
 
     if query.data == 'tracks':
         await show_tracks(query, chat_id)
@@ -334,6 +438,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await show_track_info(query, track_id)
 
 
+
 async def show_tracks(query, chat_id) -> None:
     keyboard = [
         [
@@ -355,7 +460,9 @@ async def show_tracks(query, chat_id) -> None:
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
 
+
     reply_markup = InlineKeyboardMarkup(keyboard)
+
 
     await query.edit_message_text(
         text="🎵 **Наши треки:**\n\n"
@@ -370,12 +477,15 @@ async def show_tracks(query, chat_id) -> None:
     )
 
 
+
 async def play_track(query, track_id, context) -> None:
     if track_id not in TRACKS:
         await query.answer("❌ Трек не найден", show_alert=True)
         return
 
+
     track = TRACKS[track_id]
+
 
     if track['file_id'] is None:
         await query.answer(
@@ -404,18 +514,22 @@ async def play_track(query, track_id, context) -> None:
             )
 
 
+
 async def show_track_info(query, track_id) -> None:
     if track_id not in TRACKS:
         await query.edit_message_text(text="❌ Трек не найден")
         return
 
+
     track = TRACKS[track_id]
+
 
     keyboard = [
         [InlineKeyboardButton("▶️ Слушать трек", callback_data=f'play_track_{track_id}')],
         [InlineKeyboardButton("⬅️ Назад к трекам", callback_data='tracks')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+
 
     await query.edit_message_text(
         text=f"🎵 **{track['name']}** 🎵\n\n"
@@ -431,6 +545,7 @@ async def show_track_info(query, track_id) -> None:
     )
 
 
+
 async def show_tickets(query, chat_id) -> None:
     keyboard = [
         [InlineKeyboardButton("📅 Предстоящие события", callback_data='upcoming_events')],
@@ -438,6 +553,7 @@ async def show_tickets(query, chat_id) -> None:
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+
 
     await query.edit_message_text(
         text="🎟️ **Билеты и события:**\n\n"
@@ -452,6 +568,7 @@ async def show_tickets(query, chat_id) -> None:
     )
 
 
+
 async def show_upcoming_events(query, chat_id) -> None:
     if not EVENTS:
         keyboard = [[InlineKeyboardButton("⬅️ Назад", callback_data='tickets')]]
@@ -462,6 +579,7 @@ async def show_upcoming_events(query, chat_id) -> None:
             parse_mode='Markdown'
         )
         return
+
 
     text = "📅 **ПРЕДСТОЯЩИЕ СОБЫТИЯ:**\n\n"
     for event in EVENTS:
@@ -476,8 +594,10 @@ async def show_upcoming_events(query, chat_id) -> None:
     text += f"{'=' * 50}\n\n"
     text += "Подпишись на уведомления, чтобы не пропустить! 🔔"
 
+
     keyboard = [[InlineKeyboardButton("⬅️ Назад", callback_data='tickets')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
+
 
     await query.edit_message_text(
         text=text,
@@ -486,12 +606,15 @@ async def show_upcoming_events(query, chat_id) -> None:
     )
 
 
+
 # ====================================================================
 # Уведомления
 # ====================================================================
 
+
 async def show_notifications_menu(query, chat_id) -> None:
     chat_id_str = str(chat_id)
+
 
     if chat_id_str not in users_data:
         users_data[chat_id_str] = {
@@ -503,16 +626,19 @@ async def show_notifications_menu(query, chat_id) -> None:
         }
         save_users_data(users_data)
 
+
     current_status = users_data[chat_id_str]['notifications_enabled']
     status_text = "✅ ВКЛЮЧЕНЫ" if current_status else "❌ ОТКЛЮЧЕНЫ"
     status_icon = "🟢" if current_status else "⭕"
     button_text = "❌ ОТКЛЮЧИТЬ уведомления" if current_status else "✅ ВКЛЮЧИТЬ уведомления"
+
 
     keyboard = [
         [InlineKeyboardButton(button_text, callback_data='toggle_notifications_action')],
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+
 
     await query.edit_message_text(
         text=f"🔔 **Уведомления о новых релизах:**\n\n"
@@ -530,23 +656,28 @@ async def show_notifications_menu(query, chat_id) -> None:
     )
 
 
+
 async def toggle_notifications(query, chat_id) -> None:
     chat_id_str = str(chat_id)
+
 
     if chat_id_str in users_data:
         current_status = users_data[chat_id_str]['notifications_enabled']
         users_data[chat_id_str]['notifications_enabled'] = not current_status
         save_users_data(users_data)
 
+
         new_status = users_data[chat_id_str]['notifications_enabled']
         status_text = "✅ ВКЛЮЧЕНЫ" if new_status else "❌ ОТКЛЮЧЕНЫ"
         status_icon = "🟢" if new_status else "⭕"
+
 
         keyboard = [
             [InlineKeyboardButton("🔔 Уведомления", callback_data='notifications')],
             [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
+
 
         await query.edit_message_text(
             text=f"🔔 **Уведомления о новых релизах:**\n\n"
@@ -564,9 +695,11 @@ async def toggle_notifications(query, chat_id) -> None:
         )
 
 
+
 # ====================================================================
 # Поддержка / реквизиты
 # ====================================================================
+
 
 async def show_support(query, chat_id) -> None:
     keyboard = [
@@ -576,6 +709,7 @@ async def show_support(query, chat_id) -> None:
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+
 
     await query.edit_message_text(
         text="💳 **Поддержите развитие RESPZONA!** 💳\n\n"
@@ -594,11 +728,13 @@ async def show_support(query, chat_id) -> None:
     )
 
 
+
 async def show_card_details(query, chat_id) -> None:
     keyboard = [
         [InlineKeyboardButton("⬅️ Назад", callback_data='support')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+
 
     await query.edit_message_text(
         text="💳 **Реквизиты для поддержки:**\n\n"
@@ -614,12 +750,14 @@ async def show_card_details(query, chat_id) -> None:
     )
 
 
+
 async def show_yoomoney_details(query, chat_id) -> None:
     keyboard = [
         [InlineKeyboardButton("💳 Перейти в YooMoney", url=YOOMONEY_URL)],
         [InlineKeyboardButton("⬅️ Назад", callback_data='support')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+
 
     await query.edit_message_text(
         text="💰 **YooMoney (Яндекс.Касса):**\n\n"
@@ -636,11 +774,13 @@ async def show_yoomoney_details(query, chat_id) -> None:
     )
 
 
+
 async def show_merch_details(query, chat_id) -> None:
     keyboard = [
         [InlineKeyboardButton("⬅️ Назад", callback_data='support')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+
 
     await query.edit_message_text(
         text="🎫 **Официальный мерч RESPZONA:**\n\n"
@@ -662,9 +802,11 @@ async def show_merch_details(query, chat_id) -> None:
     )
 
 
+
 # ====================================================================
 # О нас / главное меню
 # ====================================================================
+
 
 async def show_about(query) -> None:
     keyboard = [
@@ -674,6 +816,7 @@ async def show_about(query) -> None:
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+
 
     await query.edit_message_text(
         text="👥 **О RESPZONA:**\n\n"
@@ -695,6 +838,7 @@ async def show_about(query) -> None:
     )
 
 
+
 async def back_to_menu(query) -> None:
     keyboard = [
         [InlineKeyboardButton("🎵 Приложение Respzona", web_app=WebAppInfo(url=WEBAPP_URL))],
@@ -713,6 +857,7 @@ async def back_to_menu(query) -> None:
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
+
     await query.edit_message_text(
         text="🎶 **RESPZONA - главное меню** 🎶\n\n"
              "Выбери нужный пункт:",
@@ -721,13 +866,16 @@ async def back_to_menu(query) -> None:
     )
 
 
+
 # ====================================================================
 # Текст
 # ====================================================================
 
+
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_message = update.message.text.lower()
     logger.info(f"📝 Текстовое сообщение: {user_message}")
+
 
     if 'привет' in user_message:
         await update.message.reply_text("Привет! 👋 Используй /start для открытия меню")
@@ -740,18 +888,22 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         )
 
 
+
 # ====================================================================
 # Рассылка уведомлений о треках
 # ====================================================================
+
 
 async def send_track_notification(context: ContextTypes.DEFAULT_TYPE, track_id: str) -> None:
     if track_id not in TRACKS:
         logger.error(f"❌ Трек {track_id} не найден")
         return
 
+
     track = TRACKS[track_id]
     sent_count = 0
     failed_count = 0
+
 
     for chat_id_str, user_data in users_data.items():
         if user_data.get('notifications_enabled', True):
@@ -770,11 +922,13 @@ async def send_track_notification(context: ContextTypes.DEFAULT_TYPE, track_id: 
                     f"🎧 Слушай трек ниже 👇"
                 )
 
+
                 await context.bot.send_message(
                     chat_id=chat_id,
                     text=notification_text,
                     parse_mode='Markdown'
                 )
+
 
                 if track['file_id'] is not None:
                     await context.bot.send_audio(
@@ -784,18 +938,22 @@ async def send_track_notification(context: ContextTypes.DEFAULT_TYPE, track_id: 
                         performer='RESPZONA'
                     )
 
+
                 sent_count += 1
                 logger.info(f"✅ Уведомление отправлено пользователю {chat_id}")
             except Exception as e:
                 failed_count += 1
                 logger.error(f"❌ Ошибка отправки уведомления пользователю {chat_id_str}: {e}")
 
+
     logger.info(f"📊 Уведомления: отправлено {sent_count}, ошибок {failed_count}")
+
 
 
 # ====================================================================
 # MAIN
 # ====================================================================
+
 
 def main() -> None:
     logger.info("=" * 50)
@@ -803,20 +961,26 @@ def main() -> None:
     logger.info(f"📊 Загружено {len(users_data)} пользователей")
     logger.info("=" * 50)
 
+
     application = Application.builder().token(TOKEN).build()
+
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("notify", notify_handler))
     application.add_handler(CommandHandler("broadcast", broadcast_handler))
 
+
     application.add_handler(MessageHandler(filters.AUDIO, handle_audio))
     application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
+
     logger.info("🎵 БОТ ГОТОВ К РАБОТЕ!")
     logger.info("=" * 50)
 
+
     application.run_polling(allowed_updates=Update.ALL_TYPES)
+
 
 
 if __name__ == '__main__':
