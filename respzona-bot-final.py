@@ -5,7 +5,6 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppI
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 from datetime import datetime
 
-
 # Логирование с подробностью
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -25,17 +24,46 @@ YOUTUBE_STREAM_URL = "https://www.youtube.com/live/RESPZONA"
 TIKTOK_STREAM_URL = "https://www.tiktok.com/@respozona/live"
 
 # ⭐ ССЫЛКИ НА ПОДДЕРЖКУ
-YOOMONEY_URL = "https://yoomoney.ru/to/4100118663676748"  # ✅ ТВОЙ НОМЕР YooMoney
-MERCH_URL = "https://respzona-merch.printful.com/"  # ЗАМЕНИ НА СВОЙ МАГАЗИН PRINTFUL
+YOOMONEY_URL = "https://yoomoney.ru/to/4100118663676748"
+MERCH_URL = "https://respzona-merch.printful.com/"
 
 # Реквизиты
 CARD_NUMBER = "2200 7019 4251 1996"
 CARD_HOLDER = "RESPZONA"
 
 USERS_FILE = "users_data.json"
-
-# Твой админ-ID
 ADMIN_ID = 8026939529
+
+# ====================================================================
+# СТИКЕРЫ МЕРЧА
+# ====================================================================
+
+MERCH_STICKERS = [
+    {
+        'id': 'sticker_1',
+        'name': 'RESPZONA - Музыка & Огонь 🔥',
+        'description': 'Логотип с музыкальными элементами и огнем',
+        'price': '50₽',
+        'image_url': 'https://your-server.com/sticker_1.jpg',  # ДОБАВЬ ССЫЛКУ
+        'emoji': '🎵'
+    },
+    {
+        'id': 'sticker_2',
+        'name': 'RESPZONA - Colorful Pop 🌈',
+        'description': 'Яркий разноцветный дизайн с музыкальными нотами',
+        'price': '50₽',
+        'image_url': 'https://your-server.com/sticker_2.jpg',  # ДОБАВЬ ССЫЛКУ
+        'emoji': '🎨'
+    },
+    {
+        'id': 'sticker_3',
+        'name': 'RESPZONA - Urban Style 🌆',
+        'description': 'Городской стиль с архитектурой и музыкой',
+        'price': '50₽',
+        'image_url': 'https://your-server.com/sticker_3.jpg',  # ДОБАВЬ ССЫЛКУ
+        'emoji': '🏙️'
+    }
+]
 
 # Треки
 TRACKS = {
@@ -87,7 +115,6 @@ EVENTS = [
     }
 ]
 
-
 # ====================================================================
 # Работа с пользователями
 # ====================================================================
@@ -102,7 +129,6 @@ def load_users_data():
             return {}
     return {}
 
-
 def save_users_data(users_data):
     try:
         with open(USERS_FILE, 'w', encoding='utf-8') as f:
@@ -111,9 +137,7 @@ def save_users_data(users_data):
     except Exception as e:
         logger.error(f"❌ Ошибка сохранения данных: {e}")
 
-
 users_data = load_users_data()
-
 
 # ====================================================================
 # Команды
@@ -145,8 +169,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             InlineKeyboardButton("🎟️ Билеты", callback_data='tickets')
         ],
         [
-            InlineKeyboardButton("🔔 Уведомления", callback_data='notifications'),
-            InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL)
+            InlineKeyboardButton("🛍️ Мерч", callback_data='merch_catalog'),
+            InlineKeyboardButton("🔔 Уведомления", callback_data='notifications')
         ],
         [
             InlineKeyboardButton("💳 Поддержать группу", callback_data='support'),
@@ -162,12 +186,125 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"✨ Слушать наши треки онлайн\n"
         f"🎤 Узнать о концертах и событиях\n"
         f"🔔 Включить уведомления о новых релизах\n"
+        f"🛍️ Купить официальный мерч\n"
         f"💳 Поддержать развитие проекта\n"
         f"📱 Следить за нами в социальных сетях\n\n"
         f"Выбери нужный пункт меню ниже!",
         reply_markup=reply_markup
     )
 
+# ====================================================================
+# МЕРЧ ФУНКЦИОНАЛ
+# ====================================================================
+
+async def show_merch_catalog(query, chat_id) -> None:
+    """Показывает каталог мерча со стикерами"""
+    keyboard = [
+        [InlineKeyboardButton("📦 Стикеры (10шт) - 50₽", callback_data='show_stickers')],
+        [InlineKeyboardButton("👕 Футболки (в разработке)", callback_data='tshirts_coming')],
+        [InlineKeyboardButton("🧢 Кепки (в разработке)", callback_data='caps_coming')],
+        [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text="🛍️ **ОФИЦИАЛЬНЫЙ МЕРЧ RESPZONA** 🛍️\n\n"
+             "Выбери товар для просмотра:\n\n"
+             "📦 **Стикеры** - Набор из 10 стикеров (50₽)\n"
+             "👕 **Футболки** - Скоро! (500₽)\n"
+             "🧢 **Кепки** - Скоро! (400₽)\n\n"
+             "💫 Каждый заказ упакуется с любовью ❤️\n"
+             "🚚 Бесплатная доставка по России 🚀",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+async def show_stickers(query, chat_id) -> None:
+    """Показывает все варианты стикеров"""
+    text = "🏷️ **СТИКЕРЫ RESPZONA (10шт за 50₽)** 🏷️\n\n"
+    text += "Выбери дизайн:\n\n"
+
+    keyboard = []
+    for sticker in MERCH_STICKERS:
+        text += f"{sticker['emoji']} **{sticker['name']}**\n"
+        text += f"📝 {sticker['description']}\n"
+        text += f"💰 Цена: {sticker['price']}\n\n"
+        
+        keyboard.append([InlineKeyboardButton(
+            f"{sticker['emoji']} {sticker['name']}", 
+            callback_data=f"sticker_details_{sticker['id']}"
+        )])
+
+    keyboard.append([InlineKeyboardButton("⬅️ Назад", callback_data='merch_catalog')])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text=text,
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+async def show_sticker_details(query, sticker_id) -> None:
+    """Показывает подробности конкретного стикера"""
+    sticker = next((s for s in MERCH_STICKERS if s['id'] == sticker_id), None)
+    
+    if not sticker:
+        await query.answer("❌ Стикер не найден", show_alert=True)
+        return
+
+    keyboard = [
+        [InlineKeyboardButton("🛒 Купить в магазине", url=MERCH_URL)],
+        [InlineKeyboardButton("👀 Другие дизайны", callback_data='show_stickers')],
+        [InlineKeyboardButton("⬅️ В каталог", callback_data='merch_catalog')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text=f"{sticker['emoji']} **{sticker['name']}**\n\n"
+             f"📝 **Описание:**\n"
+             f"{sticker['description']}\n\n"
+             f"💰 **Цена:** {sticker['price']}\n"
+             f"📦 **Количество:** 10 стикеров в наборе\n"
+             f"✨ **Материал:** Глянцевые, водостойкие\n"
+             f"🎨 **Размер:** Оптимален для ноутбука и телефона\n\n"
+             f"🚚 **Доставка:**\n"
+             f"✅ Бесплатная по России\n"
+             f"✅ Отправка 1-3 дня\n"
+             f"✅ Упаковка с заботой ❤️\n\n"
+             f"🛒 Перейди в магазин для оформления заказа!",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+async def merch_coming_soon(query, item_type) -> None:
+    """Показывает сообщение "скоро"."""
+    keyboard = [
+        [InlineKeyboardButton("🔔 Получить уведомление", callback_data='notifications')],
+        [InlineKeyboardButton("⬅️ В каталог", callback_data='merch_catalog')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    items = {
+        'tshirts': ('👕 ФУТБОЛКИ', '500₽', 'хлопковые футболки с логотипом RESPZONA'),
+        'caps': ('🧢 КЕПКИ', '400₽', 'стильные кепки с вышитым логотипом')
+    }
+
+    name, price, desc = items.get(item_type, ('Товар', '???', 'неизвестный товар'))
+
+    await query.edit_message_text(
+        text=f"{name}\n\n"
+             f"💰 **Цена:** {price}\n"
+             f"📝 **Описание:** {desc}\n\n"
+             f"🚀 **СКОРО В ПРОДАЖЕ!**\n\n"
+             f"Включи уведомления, чтобы не пропустить релиз! 🔔\n"
+             f"Напиши в @respzonachat для ранней информации!",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+# ====================================================================
+# Остальной функционал (остаётся как было)
+# ====================================================================
 
 async def notify_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_user.id != ADMIN_ID:
@@ -213,7 +350,6 @@ async def notify_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         f"✅ Уведомление отправлено!\n\n"
         f"📊 Проверь логи для деталей отправки"
     )
-
 
 async def broadcast_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_user.id != ADMIN_ID:
@@ -263,11 +399,6 @@ async def broadcast_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         parse_mode='Markdown'
     )
 
-
-# ====================================================================
-# Медиа / треки / события
-# ====================================================================
-
 async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info("🎵 ПОЛУЧЕН АУДИОФАЙЛ!")
     try:
@@ -297,7 +428,6 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             parse_mode='Markdown'
         )
 
-
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
@@ -310,6 +440,17 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await show_tickets(query, chat_id)
     elif query.data == 'upcoming_events':
         await show_upcoming_events(query, chat_id)
+    elif query.data == 'merch_catalog':
+        await show_merch_catalog(query, chat_id)
+    elif query.data == 'show_stickers':
+        await show_stickers(query, chat_id)
+    elif query.data.startswith('sticker_details_'):
+        sticker_id = query.data.replace('sticker_details_', '')
+        await show_sticker_details(query, sticker_id)
+    elif query.data == 'tshirts_coming':
+        await merch_coming_soon(query, 'tshirts')
+    elif query.data == 'caps_coming':
+        await merch_coming_soon(query, 'caps')
     elif query.data == 'notifications':
         await show_notifications_menu(query, chat_id)
     elif query.data == 'toggle_notifications_action':
@@ -332,7 +473,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     elif query.data.startswith('info_track_'):
         track_id = query.data.replace('info_track_', '')
         await show_track_info(query, track_id)
-
 
 async def show_tracks(query, chat_id) -> None:
     keyboard = [
@@ -369,7 +509,6 @@ async def show_tracks(query, chat_id) -> None:
         parse_mode='Markdown'
     )
 
-
 async def play_track(query, track_id, context) -> None:
     if track_id not in TRACKS:
         await query.answer("❌ Трек не найден", show_alert=True)
@@ -403,7 +542,6 @@ async def play_track(query, track_id, context) -> None:
                 show_alert=True
             )
 
-
 async def show_track_info(query, track_id) -> None:
     if track_id not in TRACKS:
         await query.edit_message_text(text="❌ Трек не найден")
@@ -430,7 +568,6 @@ async def show_track_info(query, track_id) -> None:
         parse_mode='Markdown'
     )
 
-
 async def show_tickets(query, chat_id) -> None:
     keyboard = [
         [InlineKeyboardButton("📅 Предстоящие события", callback_data='upcoming_events')],
@@ -450,7 +587,6 @@ async def show_tickets(query, chat_id) -> None:
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
-
 
 async def show_upcoming_events(query, chat_id) -> None:
     if not EVENTS:
@@ -484,7 +620,6 @@ async def show_upcoming_events(query, chat_id) -> None:
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
-
 
 # ====================================================================
 # Уведомления
@@ -529,7 +664,6 @@ async def show_notifications_menu(query, chat_id) -> None:
         parse_mode='Markdown'
     )
 
-
 async def toggle_notifications(query, chat_id) -> None:
     chat_id_str = str(chat_id)
 
@@ -563,7 +697,6 @@ async def toggle_notifications(query, chat_id) -> None:
             parse_mode='Markdown'
         )
 
-
 # ====================================================================
 # Поддержка / реквизиты
 # ====================================================================
@@ -572,7 +705,7 @@ async def show_support(query, chat_id) -> None:
     keyboard = [
         [InlineKeyboardButton("💳 Карта Т-Банк", callback_data='show_card')],
         [InlineKeyboardButton("💰 YooMoney", callback_data='show_yoomoney')],
-        [InlineKeyboardButton("🎫 Купить мерч", callback_data='show_merch')],
+        [InlineKeyboardButton("🛍️ Купить мерч", callback_data='merch_catalog')],
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -587,12 +720,11 @@ async def show_support(query, chat_id) -> None:
              "**Выбери способ поддержки:**\n"
              "💳 Карта Т-Банк\n"
              "💰 YooMoney (кошелек)\n"
-             "🎫 Купить мерч\n\n"
+             "🛍️ Купить мерч\n\n"
              "Каждый рубль важен! Спасибо за поддержку! ❤️",
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
-
 
 async def show_card_details(query, chat_id) -> None:
     keyboard = [
@@ -612,7 +744,6 @@ async def show_card_details(query, chat_id) -> None:
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
-
 
 async def show_yoomoney_details(query, chat_id) -> None:
     keyboard = [
@@ -635,7 +766,6 @@ async def show_yoomoney_details(query, chat_id) -> None:
         parse_mode='Markdown'
     )
 
-
 async def show_merch_details(query, chat_id) -> None:
     keyboard = [
         [InlineKeyboardButton("⬅️ Назад", callback_data='support')]
@@ -644,23 +774,19 @@ async def show_merch_details(query, chat_id) -> None:
 
     await query.edit_message_text(
         text="🎫 **Официальный мерч RESPZONA:**\n\n"
-             f"🚀 **САЙТ В РАЗРАБОТКЕ** 🚀\n\n"
-             f"Скоро здесь появится магазин, где ты сможешь купить:\n\n"
+             f"🛍️ **МАГАЗИН ОТКРЫТ!** 🛍️\n\n"
+             f"Доступно к покупке:\n\n"
+             f"🏷️ **Стикеры** (10шт) - 50₽\n"
              f"👕 **Футболки** (все размеры) - ~500₽\n"
-             f"🧢 **Кепки** - ~400₽\n"
-             f"🏷️ **Стикеры** (10шт) - ~50₽\n"
-             f"🎵 **И другое!**\n\n"
-             f"💫 **Как это будет работать:**\n"
-             f"1️⃣ Жмешь кнопку «Купить»\n"
-             f"2️⃣ Выбираешь товар\n"
-             f"3️⃣ Оплачиваешь\n"
-             f"4️⃣ Получаешь посылку в свой город автоматически! 🚚\n\n"
-             f"🔔 **Следи за обновлениями!**\n"
-             f"Напиши @respzonachat чтобы узнать когда откроется магазин!",
+             f"🧢 **Кепки** - ~400₽\n\n"
+             f"💫 **Как это работает:**\n"
+             f"1️⃣ Выбери товар в меню\n"
+             f"2️⃣ Оплати через платежную систему\n"
+             f"3️⃣ Получи посылку в свой город! 🚚\n\n"
+             f"✨ **Быстрая доставка и упаковка с любовью!** ❤️",
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
-
 
 # ====================================================================
 # О нас / главное меню
@@ -694,7 +820,6 @@ async def show_about(query) -> None:
         parse_mode='Markdown'
     )
 
-
 async def back_to_menu(query) -> None:
     keyboard = [
         [InlineKeyboardButton("🎵 Приложение Respzona", web_app=WebAppInfo(url=WEBAPP_URL))],
@@ -703,8 +828,8 @@ async def back_to_menu(query) -> None:
             InlineKeyboardButton("🎟️ Билеты", callback_data='tickets')
         ],
         [
-            InlineKeyboardButton("🔔 Уведомления", callback_data='notifications'),
-            InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL)
+            InlineKeyboardButton("🛍️ Мерч", callback_data='merch_catalog'),
+            InlineKeyboardButton("🔔 Уведомления", callback_data='notifications')
         ],
         [
             InlineKeyboardButton("💳 Поддержать группу", callback_data='support'),
@@ -720,7 +845,6 @@ async def back_to_menu(query) -> None:
         parse_mode='Markdown'
     )
 
-
 # ====================================================================
 # Текст
 # ====================================================================
@@ -733,12 +857,13 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await update.message.reply_text("Привет! 👋 Используй /start для открытия меню")
     elif 'трек' in user_message or 'музыка' in user_message:
         await update.message.reply_text("Нажми кнопку 🎵 Треки для просмотра наших треков!")
+    elif 'мерч' in user_message:
+        await update.message.reply_text("Нажми кнопку 🛍️ Мерч для просмотра официального мерча!")
     else:
         await update.message.reply_text(
             "Не поняла команду 🤔\n"
             "Используй /start для открытия меню"
         )
-
 
 # ====================================================================
 # Рассылка уведомлений о треках
@@ -792,7 +917,6 @@ async def send_track_notification(context: ContextTypes.DEFAULT_TYPE, track_id: 
 
     logger.info(f"📊 Уведомления: отправлено {sent_count}, ошибок {failed_count}")
 
-
 # ====================================================================
 # MAIN
 # ====================================================================
@@ -817,7 +941,6 @@ def main() -> None:
     logger.info("=" * 50)
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
-
 
 if __name__ == '__main__':
     main()
