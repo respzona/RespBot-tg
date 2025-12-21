@@ -14,7 +14,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-# ✅ ПРЯМОЙ ТОКЕН (НЕ ЗАБЫВАЙ ПОТОМ СПРЯТАТЬ)
+# ✅ ПРЯМОЙ ТОКЕН
 TOKEN = "8501298263:AAFsKnHjy9ha9pWji7j36kfQ3e5za01aYdQ"
 
 WEBAPP_URL = "https://verdant-paprenjak-887d4a.netlify.app/"
@@ -23,6 +23,10 @@ YOUTUBE_URL = "https://www.youtube.com/@ANTWOORDMUS"
 TIKTOK_URL = "https://www.tiktok.com/@respozona"
 YOUTUBE_STREAM_URL = "https://www.youtube.com/live/RESPZONA"
 TIKTOK_STREAM_URL = "https://www.tiktok.com/@respozona/live"
+
+# ⭐ ССЫЛКИ НА ПОДДЕРЖКУ
+YOOMONEY_URL = "https://yoomoney.ru/to/4100118663676748"  # ✅ ТВОЙ НОМЕР YooMoney
+MERCH_URL = "https://respzona-merch.printful.com/"  # ЗАМЕНИ НА СВОЙ МАГАЗИН PRINTFUL
 
 # Реквизиты
 CARD_NUMBER = "2200 7019 4251 1996"
@@ -314,6 +318,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await show_support(query, chat_id)
     elif query.data == 'show_card':
         await show_card_details(query, chat_id)
+    elif query.data == 'show_yoomoney':
+        await show_yoomoney_details(query, chat_id)
+    elif query.data == 'show_merch':
+        await show_merch_details(query, chat_id)
     elif query.data == 'about':
         await show_about(query)
     elif query.data == 'back_to_menu':
@@ -562,8 +570,9 @@ async def toggle_notifications(query, chat_id) -> None:
 
 async def show_support(query, chat_id) -> None:
     keyboard = [
-        [InlineKeyboardButton("💳 Реквизиты карты", callback_data='show_card')],
-        [InlineKeyboardButton("❤️ Другие способы (Скоро)", callback_data='other_support')],
+        [InlineKeyboardButton("💳 Карта Т-Банк", callback_data='show_card')],
+        [InlineKeyboardButton("💰 YooMoney", callback_data='show_yoomoney')],
+        [InlineKeyboardButton("🎫 Купить мерч", callback_data='show_merch')],
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -575,9 +584,10 @@ async def show_support(query, chat_id) -> None:
              "🎤 Организовывать концерты\n"
              "🎸 Улучшать качество звука\n"
              "📱 Развивать проект\n\n"
-             "**Способы поддержки:**\n"
-             "💳 Перевод на карту (Т-Банк)\n"
-             "❤️ Другие способы скоро будут доступны\n\n"
+             "**Выбери способ поддержки:**\n"
+             "💳 Карта Т-Банк\n"
+             "💰 YooMoney (кошелек)\n"
+             "🎫 Купить мерч\n\n"
              "Каждый рубль важен! Спасибо за поддержку! ❤️",
         reply_markup=reply_markup,
         parse_mode='Markdown'
@@ -586,7 +596,6 @@ async def show_support(query, chat_id) -> None:
 
 async def show_card_details(query, chat_id) -> None:
     keyboard = [
-        [InlineKeyboardButton("📋 Скопировать номер", callback_data='copy_card')],
         [InlineKeyboardButton("⬅️ Назад", callback_data='support')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -600,6 +609,54 @@ async def show_card_details(query, chat_id) -> None:
              f"Минимально - 10₽, максимально - ваши возможности! 💰\n\n"
              f"❤️ Спасибо за поддержку проекта!\n\n"
              f"После перевода можешь отправить скриншот @respzonachat для спасибо видеомессажа 🎬",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+
+async def show_yoomoney_details(query, chat_id) -> None:
+    keyboard = [
+        [InlineKeyboardButton("💳 Перейти в YooMoney", url=YOOMONEY_URL)],
+        [InlineKeyboardButton("⬅️ Назад", callback_data='support')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text="💰 **YooMoney (Яндекс.Касса):**\n\n"
+             f"Быстрый способ поддержать группу через цифровой кошелек!\n\n"
+             f"✨ **Преимущества:**\n"
+             f"✅ Быстрое пополнение\n"
+             f"✅ Безопасно\n"
+             f"✅ Любая сумма\n\n"
+             f"💰 Минимально - 10₽, максимально - ваши возможности!\n\n"
+             f"❤️ Спасибо за поддержку проекта!\n\n"
+             f"После пополнения можешь отправить скриншот @respzonachat для спасибо видеомессажа 🎬",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+
+async def show_merch_details(query, chat_id) -> None:
+    keyboard = [
+        [InlineKeyboardButton("⬅️ Назад", callback_data='support')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text="🎫 **Официальный мерч RESPZONA:**\n\n"
+             f"🚀 **САЙТ В РАЗРАБОТКЕ** 🚀\n\n"
+             f"Скоро здесь появится магазин, где ты сможешь купить:\n\n"
+             f"👕 **Футболки** (все размеры) - ~500₽\n"
+             f"🧢 **Кепки** - ~400₽\n"
+             f"🏷️ **Стикеры** (10шт) - ~50₽\n"
+             f"🎵 **И другое!**\n\n"
+             f"💫 **Как это будет работать:**\n"
+             f"1️⃣ Жмешь кнопку «Купить»\n"
+             f"2️⃣ Выбираешь товар\n"
+             f"3️⃣ Оплачиваешь\n"
+             f"4️⃣ Получаешь посылку в свой город автоматически! 🚚\n\n"
+             f"🔔 **Следи за обновлениями!**\n"
+             f"Напиши @respzonachat чтобы узнать когда откроется магазин!",
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
