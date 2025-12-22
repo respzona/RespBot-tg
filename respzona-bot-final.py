@@ -32,6 +32,7 @@ TIKTOK_STREAM_URL = "https://www.tiktok.com/@respozona/live"
 # ⭐ ССЫЛКИ НА ПОДДЕРЖКУ
 YOOMONEY_URL = "https://yoomoney.ru/to/4100118663676748"  # ✅ ТВОЙ НОМЕР YooMoney
 MERCH_URL = "https://respzona-merch.printful.com/"  # ЗАМЕНИ НА СВОЙ МАГАЗИН PRINTFUL
+BOOSTY_DONATE_URL = "https://boosty.to/respzona/donate"  # ✅ ССЫЛКА НА BOOSTY ДОНАТЫ
 
 
 # Реквизиты
@@ -88,11 +89,23 @@ EVENTS = [
     {
         'date': '07.01.2025',
         'time': '19:00',
-        'title': '🎵 RESPZONA LIVE СТРИМ',
-        'description': 'Прямая трансляция музыки и общения с фанатами!',
+        'title': '🎉 БОЛЬШОЙ НОВОГОДНИЙ СТРИМ',
+        'description': 'Масштабная новогодняя трансляция музыки, веселья и общения с фанатами!',
         'platforms': [
-            {'name': '🎬 YouTube', 'url': YOUTUBE_STREAM_URL},
-            {'name': '🎵 TikTok', 'url': TIKTOK_STREAM_URL}
+            {'name': '🎬 YouTube (БЕСПЛАТНО)', 'url': YOUTUBE_STREAM_URL},
+            {'name': '🎵 TikTok Live (БЕСПЛАТНО)', 'url': TIKTOK_STREAM_URL},
+            {'name': '💎 Boosty (БЕСПЛАТНО)', 'url': BOOSTY_DONATE_URL}
+        ]
+    },
+    {
+        'date': '❓ Дата секрет',
+        'time': '⏰ Время неизвестно',
+        'title': '🎵 ТРЕК СЮРПРИЗ 🎵',
+        'description': 'Самый ожидаемый момент! Будет шокирующее объявление! Подписывайся чтобы не пропустить!',
+        'platforms': [
+            {'name': '📱 Telegram', 'url': TELEGRAM_URL},
+            {'name': '🎬 YouTube', 'url': YOUTUBE_URL},
+            {'name': '🎵 TikTok', 'url': TIKTOK_URL}
         ]
     }
 ]
@@ -164,11 +177,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             InlineKeyboardButton("🎟️ Билеты", callback_data='tickets')
         ],
         [
-            InlineKeyboardButton("🔔 Уведомления", callback_data='notifications'),
-            InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL)
+            InlineKeyboardButton("💳 Донаты", callback_data='donates'),
+            InlineKeyboardButton("🔔 Уведомления", callback_data='notifications')
         ],
         [
-            InlineKeyboardButton("💳 Поддержать группу", callback_data='support'),
+            InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL),
             InlineKeyboardButton("👥 О нас", callback_data='about')
         ]
     ]
@@ -181,8 +194,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"Здесь ты можешь:\n"
         f"✨ Слушать наши треки онлайн\n"
         f"🎤 Узнать о концертах и событиях\n"
-        f"🔔 Включить уведомления о новых релизах\n"
         f"💳 Поддержать развитие проекта\n"
+        f"🔔 Включить уведомления о новых релизах\n"
         f"📱 Следить за нами в социальных сетях\n\n"
         f"Выбери нужный пункт меню ниже!",
         reply_markup=reply_markup
@@ -293,7 +306,7 @@ async def broadcast_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     # ✅ Информирование админа о начале рассылки
     await update.message.reply_text(
         f"📢 **Отправляю рассылку:**\n\n"
-        f"```\n{message_text}\n```\n\n"
+        f"``````\n\n"
         f"⏳ Это может занять несколько секунд...",
         parse_mode='Markdown'
     )
@@ -349,7 +362,7 @@ async def broadcast_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         f"🚫 Заблокировано: **{blocked_count}**\n"
         f"📈 Всего пользователей: **{len(users_data)}**\n\n"
         f"💬 **Отправленное сообщение:**\n"
-        f"```\n{message_text}\n```"
+        f"``````"
     )
     
     await update.message.reply_text(report_text, parse_mode='Markdown')
@@ -412,6 +425,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await show_tracks(query, chat_id)
     elif query.data == 'tickets':
         await show_tickets(query, chat_id)
+    elif query.data == 'donates':
+        await show_donates(query, chat_id)
     elif query.data == 'upcoming_events':
         await show_upcoming_events(query, chat_id)
     elif query.data == 'notifications':
@@ -426,6 +441,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await show_yoomoney_details(query, chat_id)
     elif query.data == 'show_merch':
         await show_merch_details(query, chat_id)
+    elif query.data == 'show_boosty':
+        await show_boosty_details(query, chat_id)
     elif query.data == 'about':
         await show_about(query)
     elif query.data == 'back_to_menu':
@@ -549,7 +566,9 @@ async def show_track_info(query, track_id) -> None:
 async def show_tickets(query, chat_id) -> None:
     keyboard = [
         [InlineKeyboardButton("📅 Предстоящие события", callback_data='upcoming_events')],
-        [InlineKeyboardButton("🎟️ Купить билеты (Скоро...)", callback_data='buy_tickets')],
+        [InlineKeyboardButton("🎬 YouTube БЕСПЛАТНО", url=YOUTUBE_STREAM_URL)],
+        [InlineKeyboardButton("🎵 TikTok Live БЕСПЛАТНО", url=TIKTOK_STREAM_URL)],
+        [InlineKeyboardButton("💎 Boosty БЕСПЛАТНО", url=BOOSTY_DONATE_URL)],
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -557,12 +576,11 @@ async def show_tickets(query, chat_id) -> None:
 
     await query.edit_message_text(
         text="🎟️ **Билеты и события:**\n\n"
-             "Функция покупки билетов находится в разработке 🚀\n\n"
-             "Скоро вы сможете:\n"
-             "✓ Покупать билеты на наши концерты\n"
-             "✓ Узнавать о предстоящих событиях\n"
-             "✓ Получать приоритетный доступ к билетам\n\n"
-             "Подпишитесь на уведомления, чтобы не пропустить!",
+             "📺 **СМОТРИ ТРАНСЛЯЦИИ БЕСПЛАТНО!**\n\n"
+             "🎬 **YouTube** - смотри прямые трансляции\n"
+             "🎵 **TikTok Live** - следи за нашим TikTok\n"
+             "💎 **Boosty** - эксклюзивный контент\n\n"
+             "🔔 Нажми кнопку 'Предстоящие события' для полной информации!",
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
@@ -601,6 +619,58 @@ async def show_upcoming_events(query, chat_id) -> None:
 
     await query.edit_message_text(
         text=text,
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+
+
+# ====================================================================
+# ДОНАТЫ
+# ====================================================================
+
+
+async def show_donates(query, chat_id) -> None:
+    keyboard = [
+        [InlineKeyboardButton("💎 Boosty Донаты", callback_data='show_boosty')],
+        [InlineKeyboardButton("💳 Номер карты", callback_data='show_card')],
+        [InlineKeyboardButton("💰 YooMoney", callback_data='show_yoomoney')],
+        [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+
+    await query.edit_message_text(
+        text="💳 **ВКЛАДКА ДОНАТОВ** 💳\n\n"
+             "Поддержи RESPZONA - выбери способ:\n\n"
+             "💎 **Boosty** - самый удобный способ\n"
+             "💳 **Карта** - прямой перевод\n"
+             "💰 **YooMoney** - цифровой кошелек\n\n"
+             "Каждый донат помогает нам создавать лучшую музыку! ❤️",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+
+
+async def show_boosty_details(query, chat_id) -> None:
+    keyboard = [
+        [InlineKeyboardButton("💎 Перейти на Boosty", url=BOOSTY_DONATE_URL)],
+        [InlineKeyboardButton("⬅️ Назад к донатам", callback_data='donates')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+
+    await query.edit_message_text(
+        text="💎 **DONATES НА BOOSTY:**\n\n"
+             "Самый удобный и безопасный способ поддержать группу!\n\n"
+             "✨ **Что ты получишь:**\n"
+             "💝 Спасибо видеомессаж от группы\n"
+             "🎁 Эксклюзивный контент для донаторов\n"
+             "🎵 Доступ к премиум постам\n"
+             "💬 Прямой контакт с нами\n"
+             "🏆 Статус 'Поддержчик' в чате\n\n"
+             "🔗 Нажми кнопку ниже и донати! 👇",
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
@@ -731,17 +801,16 @@ async def show_support(query, chat_id) -> None:
 
 async def show_card_details(query, chat_id) -> None:
     keyboard = [
-        [InlineKeyboardButton("⬅️ Назад", callback_data='support')]
+        [InlineKeyboardButton("⬅️ Назад к донатам", callback_data='donates')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
 
     await query.edit_message_text(
-        text="💳 **Реквизиты для поддержки:**\n\n"
+        text="💳 **Реквизиты карты:**\n\n"
              f"**Номер карты:**\n"
              f"`{CARD_NUMBER}`\n\n"
              f"**Получатель:** RESPZONA\n\n"
-             f"**Банк:** Т-Банк (Тинькофф)\n\n"
              f"Любая сумма поддержки! 💰\n\n"
              f"❤️ Спасибо за поддержку проекта!\n\n"
              f"После перевода можешь отправить скриншот @respzonachat для спасибо видеомессажа 🎬",
@@ -754,7 +823,7 @@ async def show_card_details(query, chat_id) -> None:
 async def show_yoomoney_details(query, chat_id) -> None:
     keyboard = [
         [InlineKeyboardButton("💳 Перейти в YooMoney", url=YOOMONEY_URL)],
-        [InlineKeyboardButton("⬅️ Назад", callback_data='support')]
+        [InlineKeyboardButton("⬅️ Назад к донатам", callback_data='donates')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -847,11 +916,11 @@ async def back_to_menu(query) -> None:
             InlineKeyboardButton("🎟️ Билеты", callback_data='tickets')
         ],
         [
-            InlineKeyboardButton("🔔 Уведомления", callback_data='notifications'),
-            InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL)
+            InlineKeyboardButton("💳 Донаты", callback_data='donates'),
+            InlineKeyboardButton("🔔 Уведомления", callback_data='notifications')
         ],
         [
-            InlineKeyboardButton("💳 Поддержать группу", callback_data='support'),
+            InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL),
             InlineKeyboardButton("👥 О нас", callback_data='about')
         ]
     ]
