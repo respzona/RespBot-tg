@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # ✅ ПРЯМОЙ ТОКЕН
 TOKEN = "8351765550:AAFyuAfkijrRN8EB4t7EG-64sXNLUqDAZd0"
 
-WEBAPP_URL = "https://verdant-paprenjak-887d4a.netlify.app/"
+WEBAPP_URL = "https://resp1-two.vercel.app/"
 TELEGRAM_URL = "https://t.me/RESPZONA"
 YOUTUBE_URL = "https://www.youtube.com/@ANTWOORDMUS"
 TIKTOK_URL = "https://www.tiktok.com/@respozona"
