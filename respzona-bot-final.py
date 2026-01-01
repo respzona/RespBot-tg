@@ -29,15 +29,11 @@ YOOMONEY_URL = "https://yoomoney.ru/to/4100118663676748"
 MERCH_URL = "https://respzona-merch.printful.com/"
 BOOSTY_DONATE_URL = "https://boosty.to/respzona/donate"
 
-# 🤝 СОТРУДНИЧЕСТВО
-COLLABORATION_CONTACT = "@aryxresp"
-
 # Реквизиты
 CARD_NUMBER = "2200 7019 4251 1996"
 CARD_HOLDER = "RESPZONA"
 
 USERS_FILE = "users_data.json"
-REFERRALS_FILE = "referrals_data.json"
 POLLS_FILE = "polls_data.json"
 SCHEDULED_FILE = "scheduled_messages.json"
 
@@ -846,7 +842,7 @@ async def show_about(query) -> None:
         [InlineKeyboardButton("📱 Telegram канал", url=TELEGRAM_URL)],
         [InlineKeyboardButton("🎬 YouTube канал", url=YOUTUBE_URL)],
         [InlineKeyboardButton("🎵 TikTok", url=TIKTOK_URL)],
-        [InlineKeyboardButton("📧 Написать @aryxresp", url=f"https://t.me/aryxresp")],
+        [InlineKeyboardButton("📧 Написать нам", callback_data='contact_us')],
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -866,7 +862,24 @@ async def show_about(query) -> None:
             "🎬 YouTube: https://www.youtube.com/@respzonamus\n"
             "🎵 TikTok: https://www.tiktok.com/@respozona\n"
             "📧 Email: resp.zona@bk.ru\n\n"
-            "**🤝 СОТРУДНИЧЕСТВО:**\n\n"
+            "Спасибо, что слушаешь RESPZONA! ❤️"
+        ),
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+async def show_contact_us(query) -> None:
+    """Показывает информацию о сотрудничестве"""
+    keyboard = [
+        [InlineKeyboardButton("💬 Telegram чат", url="https://t.me/respzonachat")],
+        [InlineKeyboardButton("📧 Email: resp.zona@bk.ru", callback_data='copy_email')],
+        [InlineKeyboardButton("⬅️ Назад", callback_data='about')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        text=(
+            "🤝 **СОТРУДНИЧЕСТВО:**\n\n"
             "Ты хочешь сотрудничать с нами? Отлично! 🎵\n\n"
             "✨ **Мы открыты для:**\n"
             "🎨 Дизайнеров (обложки, визуалы, мерч)\n"
@@ -876,8 +889,15 @@ async def show_about(query) -> None:
             "📱 Маркетологов (SMM, реклама)\n"
             "💻 Программистов (сайты, боты, приложения)\n"
             "🎸 Музыкантов (гитара, бас, ударные)\n\n"
-            "💬 **Контакт для сотрудничества:** @aryxresp\n\n"
-            "Спасибо, что слушаешь RESPZONA! ❤️"
+            "💬 **Как с нами связаться:**\n"
+            "Telegram чат или напиши на почту resp.zona@bk.ru\n\n"
+            "📝 **Расскажи нам:**\n"
+            "• Кто ты и чем занимаешься\n"
+            "• Какой идеей ты хочешь помочь\n"
+            "• Портфолио или примеры работ\n"
+            "• Твои контакты для связи\n\n"
+            "⚡ Мы ответим в течение 24 часов!\n\n"
+            "Давай создавать крутую музыку вместе! 🚀"
         ),
         reply_markup=reply_markup,
         parse_mode='Markdown'
@@ -984,6 +1004,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             await show_boosty_details(query, chat_id)
         elif query.data == 'about':
             await show_about(query)
+        elif query.data == 'contact_us':
+            await show_contact_us(query)
         elif query.data == 'back_to_menu':
             await back_to_menu(query)
         elif query.data.startswith('play_track_'):
@@ -1020,7 +1042,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 def main() -> None:
     logger.info("=" * 60)
-    logger.info("🚀 ЗАПУСК БОТА RESPZONA V5 (ФИНАЛЬНАЯ ВЕРСИЯ)")
+    logger.info("🚀 ЗАПУСК БОТА RESPZONA V6 (ФИНАЛЬНАЯ ВЕРСИЯ)")
     logger.info(f"📊 Загружено {len(users_data)} пользователей")
     logger.info("=" * 60)
 
@@ -1031,7 +1053,7 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, lambda u, c: None))
 
-    logger.info("🎵 БОТ RESPZONA V5 ГОТОВ К РАБОТЕ!")
+    logger.info("🎵 БОТ RESPZONA V6 ГОТОВ К РАБОТЕ!")
     logger.info("=" * 60)
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
