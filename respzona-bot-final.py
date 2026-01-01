@@ -37,6 +37,9 @@ CARD_NUMBER = "2200 7019 4251 1996"
 CARD_HOLDER = "RESPZONA"
 
 USERS_FILE = "users_data.json"
+RATINGS_FILE = "ratings_data.json"
+GALLERY_FILE = "gallery_data.json"
+REFERRALS_FILE = "referrals_data.json"
 
 # Твой админ-ID
 ADMIN_ID = 8026939529
@@ -122,28 +125,67 @@ EVENTS = [
 ]
 
 # ====================================================================
+# ВИКТОРИНА О RESPZONA 🎯
+# ====================================================================
+QUIZ_QUESTIONS = [
+    {
+        'question': 'Из каких городов состоит RESPZONA?',
+        'options': ['Уфа и Стерлитамак', 'Казань и Уфа', 'Москва и Уфа', 'СПб и Казань'],
+        'correct': 0,
+        'emoji': '🏙️'
+    },
+    {
+        'question': 'Сколько главных членов в группе?',
+        'options': ['2', '3', '4', '5'],
+        'correct': 1,
+        'emoji': '👥'
+    },
+    {
+        'question': 'Какой жанр НЕ входит в стиль RESPZONA?',
+        'options': ['Классика', 'Phonk', 'Pop', 'Rap'],
+        'correct': 0,
+        'emoji': '🎸'
+    },
+    {
+        'question': 'Как зовут администратора бота?',
+        'options': ['Nng', 'Aryx', 'nRIS', 'RESPZONA'],
+        'correct': 1,
+        'emoji': '🤖'
+    },
+    {
+        'question': 'Какой трек вышел 19.06.2025?',
+        'options': ['WORLD RUN', 'HUDAY PHONK', 'HUDAY', 'MIDNIGHT GLOW'],
+        'correct': 2,
+        'emoji': '🎵'
+    }
+]
+
+# ====================================================================
 # Работа с пользователями
 # ====================================================================
 
-def load_users_data():
-    if os.path.exists(USERS_FILE):
+def load_json_file(filename):
+    if os.path.exists(filename):
         try:
-            with open(USERS_FILE, 'r', encoding='utf-8') as f:
+            with open(filename, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
-            logger.error(f"Ошибка загрузки данных: {e}")
+            logger.error(f"❌ Ошибка загрузки {filename}: {e}")
             return {}
     return {}
 
-def save_users_data(users_data):
+def save_json_file(filename, data):
     try:
-        with open(USERS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(users_data, f, ensure_ascii=False, indent=2)
-        logger.info("✅ Данные пользователей сохранены")
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        logger.info(f"✅ Данные сохранены в {filename}")
     except Exception as e:
-        logger.error(f"❌ Ошибка сохранения данных: {e}")
+        logger.error(f"❌ Ошибка сохранения {filename}: {e}")
 
-users_data = load_users_data()
+users_data = load_json_file(USERS_FILE)
+ratings_data = load_json_file(RATINGS_FILE)
+gallery_data = load_json_file(GALLERY_FILE)
+referrals_data = load_json_file(REFERRALS_FILE)
 
 # ====================================================================
 # Команды
@@ -161,9 +203,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             'username': user.username or 'unknown',
             'first_name': user.first_name,
             'notifications_enabled': True,
-            'join_date': datetime.now().isoformat()
+            'join_date': datetime.now().isoformat(),
+            'referrer_id': None,
+            'referral_count': 0
         }
-        save_users_data(users_data)
+        save_json_file(USERS_FILE, users_data)
         logger.info(f"✅ Новый пользователь добавлен: {user.first_name}")
     else:
         logger.info(f"📝 Пользователь вернулся: {user.first_name}")
@@ -182,6 +226,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             InlineKeyboardButton("👥 О нас", callback_data='about'),
             InlineKeyboardButton("🤝 Сотрудничество", callback_data='collaboration')
         ],
+        [
+            InlineKeyboardButton("🎯 Викторина", callback_data='quiz_start'),
+            InlineKeyboardButton("🏆 Рейтинги", callback_data='ratings')
+        ],
         [InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL)]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -194,10 +242,159 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"🎤 Узнать о концертах и событиях\n"
         f"💳 Поддержать развитие проекта\n"
         f"🔔 Включить уведомления о новых релизах\n"
+        f"🎯 Сыграть в викторину\n"
+        f"🏆 Посмотреть рейтинг треков\n"
         f"📱 Следить за нами в социальных сетях\n\n"
         f"Выбери нужный пункт меню ниже!",
         reply_markup=reply_markup
     )
+
+# ====================================================================
+# НОВАЯ: СИСТЕМА РЕЙТИНГА ТРЕКОВ ⭐
+# ====================================================================
+
+async def show_track_ratings(query) -> None:
+    """Показывает рейтинги всех треков"""
+    keyboard = [
+        [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
+    ]
+    
+    text = "🏆 **РЕЙТИНГ ТРЕКОВ RESPZONA:**\n\n"
+    
+    for track_id, track_info in TRACKS.items():
+        if track_id in ratings_data:
+            ratings = ratings_data[track_id]
+            likes = ratings.get('likes', 0)
+            dislikes = ratings.get('dislikes', 0)
+            total = likes + dislikes
+            
+            if total > 0:
+                percentage = (likes / total) * 100
+            else:
+                percentage = 0
+            
+            bar_length = 10
+            filled = int((percentage / 100) * bar_length)
+            bar = "🟩" * filled + "⬜" * (bar_length - filled)
+            
+            text += f"{track_info['emoji']} **{track_info['name']}**\n"
+            text += f"👍 {likes} | 👎 {dislikes} | {percentage:.0f}%\n"
+            text += f"{bar}\n\n"
+        else:
+            text += f"{track_info['emoji']} **{track_info['name']}**\n"
+            text += "Еще никто не голосовал!\n\n"
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode='Markdown')
+
+async def rate_track(query, track_id, rating) -> None:
+    """Голосует за трек (Like/Dislike)"""
+    user_id = query.from_user.id
+    
+    if track_id not in ratings_data:
+        ratings_data[track_id] = {'likes': 0, 'dislikes': 0, 'voted_users': []}
+    
+    if user_id in ratings_data[track_id]['voted_users']:
+        await query.answer("⚠️ Ты уже голосовал за этот трек!", show_alert=True)
+        return
+    
+    if rating == 'like':
+        ratings_data[track_id]['likes'] += 1
+        await query.answer("👍 Спасибо за оценку!")
+    else:
+        ratings_data[track_id]['dislikes'] += 1
+        await query.answer("👎 Спасибо за отзыв!")
+    
+    ratings_data[track_id]['voted_users'].append(user_id)
+    save_json_file(RATINGS_FILE, ratings_data)
+
+# ====================================================================
+# НОВАЯ: ВИКТОРИНА 🎯
+# ====================================================================
+
+async def start_quiz(query) -> None:
+    """Начинает викторину"""
+    user_id = query.from_user.id
+    
+    context.user_data = context.user_data or {}
+    context.user_data[user_id] = {
+        'quiz_active': True,
+        'question_num': 0,
+        'score': 0
+    }
+    
+    await show_quiz_question(query, context, user_id)
+
+async def show_quiz_question(query, context, user_id) -> None:
+    """Показывает вопрос викторины"""
+    user_data = context.user_data.get(user_id, {})
+    question_num = user_data.get('question_num', 0)
+    
+    if question_num >= len(QUIZ_QUESTIONS):
+        # Викторина завершена
+        score = user_data.get('score', 0)
+        total = len(QUIZ_QUESTIONS)
+        percentage = (score / total) * 100
+        
+        emoji_result = "🏆" if percentage >= 80 else "✅" if percentage >= 50 else "❌"
+        
+        keyboard = [
+            [InlineKeyboardButton("🎯 Заново", callback_data='quiz_start')],
+            [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            text=f"{emoji_result} **ВИКТОРИНА ЗАВЕРШЕНА!**\n\n"
+                 f"Твой результат: **{score}/{total}** ({percentage:.0f}%)\n\n"
+                 f"{'🥇 Отличный результат! Ты супер-фан RESPZONA!' if percentage >= 80 else '✨ Хороший результат!' if percentage >= 50 else '📚 Не расстраивайся, слушай побольше нашей музыки!'}",
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+        return
+    
+    question_data = QUIZ_QUESTIONS[question_num]
+    question_text = question_data['question']
+    options = question_data['options']
+    emoji = question_data['emoji']
+    
+    keyboard = []
+    for i, option in enumerate(options):
+        keyboard.append([
+            InlineKeyboardButton(option, callback_data=f'quiz_answer_{question_num}_{i}')
+        ])
+    keyboard.append([
+        InlineKeyboardButton("❌ Выход", callback_data='back_to_menu')
+    ])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        text=f"{emoji} **ВИКТОРИНА О RESPZONA** {emoji}\n\n"
+             f"Вопрос {question_num + 1}/{len(QUIZ_QUESTIONS)}\n\n"
+             f"**{question_text}**",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+async def check_quiz_answer(query, context, question_num, answer) -> None:
+    """Проверяет ответ"""
+    user_id = query.from_user.id
+    user_data = context.user_data.get(user_id, {})
+    
+    question_data = QUIZ_QUESTIONS[question_num]
+    correct_answer = question_data['correct']
+    
+    if answer == correct_answer:
+        user_data['score'] = user_data.get('score', 0) + 1
+        await query.answer("✅ Правильно!")
+    else:
+        await query.answer(f"❌ Неправильно! Правильный ответ: {question_data['options'][correct_answer]}")
+    
+    user_data['question_num'] = question_num + 1
+    context.user_data[user_id] = user_data
+    
+    await show_quiz_question(query, context, user_id)
 
 # ====================================================================
 # КОМАНДА /broadcast - отправка рассылки всем пользователям
@@ -266,12 +463,12 @@ async def broadcast_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                     blocked_count += 1
                     logger.warning(f"🚫 Пользователь {chat_id_str} заблокировал бота")
                     user_data['notifications_enabled'] = False
-                    save_users_data(users_data)
+                    save_json_file(USERS_FILE, users_data)
                 else:
                     failed_count += 1
                     logger.error(f"❌ Ошибка отправки сообщения {chat_id_str}: {e}")
 
-    save_users_data(users_data)
+    save_json_file(USERS_FILE, users_data)
 
     report_text = (
         f"✅ **РАССЫЛКА ЗАВЕРШЕНА!**\n\n"
@@ -358,12 +555,27 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await show_collaboration(query)
     elif query.data == 'back_to_menu':
         await back_to_menu(query)
+    elif query.data == 'ratings':
+        await show_track_ratings(query)
+    elif query.data == 'quiz_start':
+        await start_quiz(query)
     elif query.data.startswith('play_track_'):
         track_id = query.data.replace('play_track_', '')
         await play_track(query, track_id, context)
     elif query.data.startswith('info_track_'):
         track_id = query.data.replace('info_track_', '')
         await show_track_info(query, track_id)
+    elif query.data.startswith('like_track_'):
+        track_id = query.data.replace('like_track_', '')
+        await rate_track(query, track_id, 'like')
+    elif query.data.startswith('dislike_track_'):
+        track_id = query.data.replace('dislike_track_', '')
+        await rate_track(query, track_id, 'dislike')
+    elif query.data.startswith('quiz_answer_'):
+        parts = query.data.split('_')
+        question_num = int(parts[2])
+        answer = int(parts[3])
+        await check_quiz_answer(query, context, question_num, answer)
 
 async def show_tracks(query, chat_id) -> None:
     keyboard = [
@@ -447,6 +659,10 @@ async def show_track_info(query, track_id) -> None:
 
     keyboard = [
         [InlineKeyboardButton("▶️ Слушать трек", callback_data=f'play_track_{track_id}')],
+        [
+            InlineKeyboardButton("👍 Класс!", callback_data=f'like_track_{track_id}'),
+            InlineKeyboardButton("👎 Не то", callback_data=f'dislike_track_{track_id}')
+        ],
         [InlineKeyboardButton("⬅️ Назад к трекам", callback_data='tracks')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -586,7 +802,7 @@ async def show_notifications_menu(query, chat_id) -> None:
             'notifications_enabled': True,
             'join_date': datetime.now().isoformat()
         }
-        save_users_data(users_data)
+        save_json_file(USERS_FILE, users_data)
 
     current_status = users_data[chat_id_str]['notifications_enabled']
     status_text = "✅ ВКЛЮЧЕНЫ" if current_status else "❌ ОТКЛЮЧЕНЫ"
@@ -622,7 +838,7 @@ async def toggle_notifications(query, chat_id) -> None:
     if chat_id_str in users_data:
         current_status = users_data[chat_id_str]['notifications_enabled']
         users_data[chat_id_str]['notifications_enabled'] = not current_status
-        save_users_data(users_data)
+        save_json_file(USERS_FILE, users_data)
 
         new_status = users_data[chat_id_str]['notifications_enabled']
         status_text = "✅ ВКЛЮЧЕНЫ" if new_status else "❌ ОТКЛЮЧЕНЫ"
@@ -838,6 +1054,10 @@ async def back_to_menu(query) -> None:
             InlineKeyboardButton("👥 О нас", callback_data='about'),
             InlineKeyboardButton("🤝 Сотрудничество", callback_data='collaboration')
         ],
+        [
+            InlineKeyboardButton("🎯 Викторина", callback_data='quiz_start'),
+            InlineKeyboardButton("🏆 Рейтинги", callback_data='ratings')
+        ],
         [InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL)]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -924,7 +1144,7 @@ async def send_track_notification(context: ContextTypes.DEFAULT_TYPE, track_id: 
 
 def main() -> None:
     logger.info("=" * 50)
-    logger.info("🚀 ЗАПУСК БОТА RESPZONA")
+    logger.info("🚀 ЗАПУСК БОТА RESPZONA V2")
     logger.info(f"📊 Загружено {len(users_data)} пользователей")
     logger.info("=" * 50)
 
