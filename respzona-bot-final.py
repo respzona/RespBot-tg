@@ -793,7 +793,7 @@ async def show_about(query) -> None:
 
 async def show_collaboration(query) -> None:
     keyboard = [
-        [InlineKeyboardButton("📱 Написать Aryx", url=f"https://t.me/{COLLABORATION_CONTACT.replace('@', '')}")],
+        [InlineKeyboardButton("📱 Написать Нам", url=f"https://t.me/{COLLABORATION_CONTACT.replace('@', '')}")],
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
