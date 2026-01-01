@@ -37,8 +37,6 @@ CARD_NUMBER = "2200 7019 4251 1996"
 CARD_HOLDER = "RESPZONA"
 
 USERS_FILE = "users_data.json"
-RATINGS_FILE = "ratings_data.json"
-GALLERY_FILE = "gallery_data.json"
 REFERRALS_FILE = "referrals_data.json"
 LOTTERY_FILE = "lottery_data.json"
 POLLS_FILE = "polls_data.json"
@@ -117,48 +115,6 @@ EVENTS = [
 ]
 
 # ====================================================================
-# ВИКТОРИНА О RESPZONA 🎯
-# ====================================================================
-QUIZ_QUESTIONS = [
-    {
-        'question': 'Из каких городов состоит RESPZONA?',
-        'options': ['Уфа и Стерлитамак', 'Казань и Уфа', 'Москва и Уфа', 'СПб и Казань'],
-        'correct': 0,
-        'emoji': '🏙️'
-    },
-    {
-        'question': 'Сколько главных членов в группе?',
-        'options': ['2', '3', '4', '5'],
-        'correct': 1,
-        'emoji': '👥'
-    },
-    {
-        'question': 'Какой жанр НЕ входит в стиль RESPZONA?',
-        'options': ['Классика', 'Phonk', 'Pop', 'Rap'],
-        'correct': 0,
-        'emoji': '🎸'
-    },
-    {
-        'question': 'Как зовут администратора бота?',
-        'options': ['Nng', 'Aryx', 'nRIS', 'RESPZONA'],
-        'correct': 1,
-        'emoji': '🤖'
-    },
-    {
-        'question': 'Какой трек вышел 19.06.2025?',
-        'options': ['WORLD RUN', 'HUDAY PHONK', 'HUDAY', 'MIDNIGHT GLOW'],
-        'correct': 2,
-        'emoji': '🎵'
-    }
-]
-
-# ОПРОСЫ
-ACTIVE_POLLS = {
-    'current_poll': None,
-    'poll_data': {}
-}
-
-# ====================================================================
 # Работа с пользователями
 # ====================================================================
 
@@ -181,15 +137,13 @@ def save_json_file(filename, data):
         logger.error(f"❌ Ошибка сохранения {filename}: {e}")
 
 users_data = load_json_file(USERS_FILE)
-ratings_data = load_json_file(RATINGS_FILE)
-gallery_data = load_json_file(GALLERY_FILE)
 referrals_data = load_json_file(REFERRALS_FILE)
 lottery_data = load_json_file(LOTTERY_FILE)
 polls_data = load_json_file(POLLS_FILE)
 scheduled_data = load_json_file(SCHEDULED_FILE)
 
 # ====================================================================
-# НОВАЯ: РЕФЕРАЛЬНАЯ СИСТЕМА 🔗
+# РЕФЕРАЛЬНАЯ СИСТЕМА 🔗
 # ====================================================================
 
 async def show_referral_menu(query) -> None:
@@ -207,7 +161,7 @@ async def show_referral_menu(query) -> None:
     ref_link = f"https://t.me/RESPZONA?start={user_id}"
     
     keyboard = [
-        [InlineKeyboardButton("📋 Скопировать ссылку", callback_data='copy_referral')],
+        [InlineKeyboardButton("📋 Скопировать ссылку", callback_data='copy_referral_link')],
         [InlineKeyboardButton("👥 Мои рефералы", callback_data='show_my_referrals')],
         [InlineKeyboardButton("🎁 Награды", callback_data='referral_rewards')],
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
@@ -311,6 +265,18 @@ async def handle_referral_start(update: Update, context: ContextTypes.DEFAULT_TY
                     pass
                 
                 logger.info(f"✅ Новый реферал: {user.first_name} (от {referrer_id})")
+    else:
+        # Просто добавляем нового пользователя если его нет
+        if chat_id_str not in users_data:
+            users_data[chat_id_str] = {
+                'user_id': user.id,
+                'username': user.username or 'unknown',
+                'first_name': user.first_name,
+                'notifications_enabled': True,
+                'join_date': datetime.now().isoformat(),
+                'referral_count': 0
+            }
+            save_json_file(USERS_FILE, users_data)
     
     # Стандартная команда /start
     keyboard = [
@@ -326,10 +292,6 @@ async def handle_referral_start(update: Update, context: ContextTypes.DEFAULT_TY
         [
             InlineKeyboardButton("👥 О нас", callback_data='about'),
             InlineKeyboardButton("🤝 Сотрудничество", callback_data='collaboration')
-        ],
-        [
-            InlineKeyboardButton("🎯 Викторина", callback_data='quiz_start'),
-            InlineKeyboardButton("🏆 Рейтинги", callback_data='ratings')
         ],
         [
             InlineKeyboardButton("🔗 Рефералы", callback_data='referral_menu'),
@@ -351,8 +313,6 @@ async def handle_referral_start(update: Update, context: ContextTypes.DEFAULT_TY
         f"🎤 Узнать о концертах и событиях\n"
         f"💳 Поддержать развитие проекта\n"
         f"🔔 Включить уведомления о новых релизах\n"
-        f"🎯 Сыграть в викторину\n"
-        f"🏆 Посмотреть рейтинг треков\n"
         f"🔗 Приглашать друзей и получать награды\n"
         f"📱 Следить за нами в социальных сетях\n\n"
         f"Выбери нужный пункт меню ниже!",
@@ -360,7 +320,7 @@ async def handle_referral_start(update: Update, context: ContextTypes.DEFAULT_TY
     )
 
 # ====================================================================
-# НОВАЯ: ЛОТЕРЕЯ ДЛЯ ДОНАТОРОВ 🎰
+# ЛОТЕРЕЯ ДЛЯ ДОНАТОРОВ 🎰
 # ====================================================================
 
 async def show_lottery_menu(query) -> None:
@@ -443,7 +403,7 @@ async def show_lottery_stats(query) -> None:
     )
 
 # ====================================================================
-# НОВАЯ: ОПРОСЫ И ГОЛОСОВАНИЕ 📊
+# ОПРОСЫ И ГОЛОСОВАНИЕ 📊
 # ====================================================================
 
 async def show_polls_menu(query) -> None:
@@ -581,7 +541,7 @@ async def show_poll_results(query) -> None:
     )
 
 # ====================================================================
-# НОВАЯ: ОТПРАВКА КАСТОМНЫХ СООБЩЕНИЙ (РАСШИРЕННАЯ РАССЫЛКА) 📢
+# СИСТЕМА ОБЪЯВЛЕНИЙ (ТОЛЬКО АДМИН) 📢
 # ====================================================================
 
 async def show_announcements_menu(query) -> None:
@@ -609,26 +569,6 @@ async def show_announcements_menu(query) -> None:
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
-
-async def handle_admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработка админских команд"""
-    
-    if update.effective_user.id != ADMIN_ID:
-        await update.message.reply_text("❌ Доступ запрещен")
-        return
-    
-    if not context.args:
-        await update.message.reply_text(
-            "📢 **КОМАНДЫ АДМИНИСТРАТОРА:**\n\n"
-            "**Отправить объявление:**\n"
-            "`/announce Твое сообщение здесь`\n\n"
-            "**Запланировать на время (мин):**\n"
-            "`/schedule_message 10 Сообщение` (через 10 минут)\n\n"
-            "**Отправить файл:**\n"
-            "Отправь файл, а я помогу его разослать",
-            parse_mode='Markdown'
-        )
-        return
 
 async def announce_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Команда /announce - отправка объявления"""
@@ -706,87 +646,395 @@ async def announce_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await update.message.reply_text(report, parse_mode='Markdown')
     logger.info(f"📢 Объявление отправлено: {sent_count} юзерам")
 
-async def schedule_announcement(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Команда для планирования объявления"""
-    
-    if update.effective_user.id != ADMIN_ID:
-        await update.message.reply_text("❌ Только администратор")
-        return
-    
-    if not context.args or len(context.args) < 2:
-        await update.message.reply_text(
-            "⏰ Использование: `/schedule_message [минуты] [сообщение]`\n\n"
-            "Пример: `/schedule_message 30 Новый трек выйдет скоро!`",
-            parse_mode='Markdown'
-        )
-        return
-    
-    try:
-        delay_minutes = int(context.args[0])
-        message_text = ' '.join(context.args[1:])
-    except ValueError:
-        await update.message.reply_text("❌ Первый аргумент должен быть числом (минуты)")
-        return
-    
-    scheduled_time = datetime.now() + timedelta(minutes=delay_minutes)
-    
-    await update.message.reply_text(
-        f"✅ Объявление запланировано!\n\n"
-        f"⏰ Отправится в: {scheduled_time.strftime('%H:%M')}\n"
-        f"📝 Сообщение: {message_text[:50]}...",
-        parse_mode='Markdown'
-    )
-    
-    logger.info(f"⏰ Объявление запланировано на {scheduled_time}")
-
 # ====================================================================
-# Основная функция start
+# ОСНОВНЫЕ ФУНКЦИИ
 # ====================================================================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await handle_referral_start(update, context)
 
-# ====================================================================
-# Обработчик кнопок
-# ====================================================================
+async def show_tracks(query, chat_id) -> None:
+    keyboard = [
+        [
+            InlineKeyboardButton("🎵 HUDAY", callback_data='info_track_huday'),
+            InlineKeyboardButton("▶️ Слушать", callback_data='play_track_huday')
+        ],
+        [
+            InlineKeyboardButton("🎵 HUDAY PHONK", callback_data='info_track_huday_phonk'),
+            InlineKeyboardButton("▶️ Слушать", callback_data='play_track_huday_phonk')
+        ],
+        [
+            InlineKeyboardButton("🎵 WORLD RUN", callback_data='info_track_world_run'),
+            InlineKeyboardButton("▶️ Слушать", callback_data='play_track_world_run')
+        ],
+        [
+            InlineKeyboardButton("🌙 MIDNIGHT GLOW", callback_data='info_track_midnight_glow'),
+            InlineKeyboardButton("❓ Узнать", callback_data='info_track_midnight_glow')
+        ],
+        [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
+    ]
 
-async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
-    chat_id = query.message.chat_id
+    quote = random.choice(MOTIVATIONAL_QUOTES)
 
-    # Реферальная система
-    if query.data == 'referral_menu':
-        await show_referral_menu(query)
-    elif query.data == 'referral_rewards':
-        await show_referral_rewards(query)
-    
-    # Лотерея
-    elif query.data == 'lottery_menu':
-        await show_lottery_menu(query)
-    elif query.data == 'join_lottery':
-        await join_lottery(query)
-    elif query.data == 'lottery_stats':
-        await show_lottery_stats(query)
-    
-    # Опросы
-    elif query.data == 'polls_menu':
-        await show_polls_menu(query)
-    elif query.data == 'current_poll':
-        await show_current_poll(query)
-    elif query.data.startswith('vote_poll_'):
-        option_id = query.data.replace('vote_poll_', '')
-        await vote_poll(query, option_id)
-    elif query.data == 'poll_results':
-        await show_poll_results(query)
-    
-    # Объявления
-    elif query.data == 'announcements_menu':
-        await show_announcements_menu(query)
-    
-    elif query.data == 'back_to_menu':
-        await back_to_menu(query)
+    await query.edit_message_text(
+        text=(
+            "🎵 **Наши треки:**\n\n"
+            "Выбери трек для прослушивания или информации:\n\n"
+            "🎵 HUDAY - мемный поп/рэп про пирог 🥧\n"
+            "🎵 HUDAY PHONK - киберпанк версия 🌆\n"
+            "🎵 WORLD RUN PHONK - энергетичный phonk 🏃\n"
+            "🌙 MIDNIGHT GLOW - новый трек выходит скоро! 🌙\n\n"
+            "Нажми 'Слушать' для прослушивания или имя для подробностей:\n\n"
+            f"💭 *{quote}*"
+        ),
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+async def play_track(query, track_id, context) -> None:
+    if track_id not in TRACKS:
+        await query.answer("❌ Трек не найден", show_alert=True)
+        return
+
+    track = TRACKS[track_id]
+
+    if track['file_id'] is None:
+        await query.answer(
+            "⚠️ Этот трек еще не вышел! 🔒\n\n"
+            "Следи за нашими обновлениями чтобы не пропустить релиз! 🎵\n\n"
+            "📱 Подпишись на уведомления",
+            show_alert=True
+        )
+    else:
+        try:
+            await context.bot.send_audio(
+                chat_id=query.message.chat_id,
+                audio=track['file_id'],
+                title=track['name'],
+                performer='RESPZONA'
+            )
+            await query.answer(f"✅ Отправляю: {track['name']}")
+            logger.info(f"✅ Трек {track_id} отправлен пользователю {query.message.chat_id}")
+        except Exception as e:
+            logger.error(f"❌ Ошибка воспроизведения трека: {e}")
+            await query.answer(
+                "❌ Ошибка при загрузке трека\n\n"
+                "Слушай на YouTube @respzonamus",
+                show_alert=True
+            )
+
+async def show_track_info(query, track_id) -> None:
+    if track_id not in TRACKS:
+        await query.edit_message_text(text="❌ Трек не найден")
+        return
+
+    track = TRACKS[track_id]
+
+    keyboard = [
+        [InlineKeyboardButton("▶️ Слушать трек", callback_data=f'play_track_{track_id}')],
+        [InlineKeyboardButton("⬅️ Назад к трекам", callback_data='tracks')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text=(
+            f"🎵 **{track['name']}** 🎵\n\n"
+            f"📅 **Дата релиза:** {track['date']}\n"
+            f"🎤 **Исполнители:** {track['artists']}\n"
+            f"🎸 **Жанр:** {track['genre']}\n\n"
+            f"📝 **О треке:**\n"
+            f"{track['description']}\n\n"
+            f"🔗 **Слушай в социальных сетях:**\n"
+            f"📱 {TELEGRAM_URL}"
+        ),
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+async def show_tickets(query, chat_id) -> None:
+    keyboard = [
+        [InlineKeyboardButton("📅 Предстоящие события", callback_data='upcoming_events')],
+        [InlineKeyboardButton("🎬 YouTube БЕСПЛАТНО", url=YOUTUBE_STREAM_URL)],
+        [InlineKeyboardButton("🎵 TikTok Live БЕСПЛАТНО", url=TIKTOK_STREAM_URL)],
+        [InlineKeyboardButton("💎 Boosty БЕСПЛАТНО", url=BOOSTY_DONATE_URL)],
+        [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text=(
+            "🎟️ **Билеты и события:**\n\n"
+            "📺 **СМОТРИ ТРАНСЛЯЦИИ БЕСПЛАТНО!**\n\n"
+            "🎬 **YouTube** - смотри прямые трансляции\n"
+            "🎵 **TikTok Live** - следи за нашим TikTok\n"
+            "💎 **Boosty** - эксклюзивный контент\n\n"
+            "🔔 Нажми кнопку 'Предстоящие события' для полной информации!"
+        ),
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+async def show_upcoming_events(query, chat_id) -> None:
+    if not EVENTS:
+        keyboard = [[InlineKeyboardButton("⬅️ Назад", callback_data='tickets')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(
+            text="📅 **Предстоящие события:**\n\n❌ Событий пока нет",
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+        return
+
+    text = "📅 **ПРЕДСТОЯЩИЕ СОБЫТИЯ:**\n\n"
+    for event in EVENTS:
+        text += f"{'=' * 50}\n"
+        text += f"📆 **{event['date']}** | ⏰ **{event['time']}**\n"
+        text += f"🎵 **{event['title']}**\n\n"
+        text += f"📝 {event['description']}\n\n"
+        text += f"**Смотри на:**\n"
+        for platform in event['platforms']:
+            text += f"🔗 [{platform['name']}]({platform['url']})\n"
+        text += "\n"
+    text += f"{'=' * 50}\n\n"
+    text += "Подпишись на уведомления, чтобы не пропустить! 🔔"
+
+    keyboard = [[InlineKeyboardButton("⬅️ Назад", callback_data='tickets')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text=text,
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+async def show_donates(query, chat_id) -> None:
+    keyboard = [
+        [InlineKeyboardButton("💎 Boosty Донаты", callback_data='show_boosty')],
+        [InlineKeyboardButton("💳 Номер карты", callback_data='show_card')],
+        [InlineKeyboardButton("💰 YooMoney", callback_data='show_yoomoney')],
+        [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text=(
+            "💳 **ВКЛАДКА ДОНАТОВ** 💳\n\n"
+            "Поддержи RESPZONA - выбери способ:\n\n"
+            "💎 **Boosty** - самый удобный способ\n"
+            "💳 **Карта** - прямой перевод\n"
+            "💰 **YooMoney** - цифровой кошелек\n\n"
+            "Каждый донат помогает нам создавать лучшую музыку! ❤️"
+        ),
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+async def show_boosty_details(query, chat_id) -> None:
+    keyboard = [
+        [InlineKeyboardButton("💎 Перейти на Boosty", url=BOOSTY_DONATE_URL)],
+        [InlineKeyboardButton("⬅️ Назад к донатам", callback_data='donates')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text=(
+            "💎 **DONATES НА BOOSTY:**\n\n"
+            "Самый удобный и безопасный способ поддержать группу!\n\n"
+            "✨ **Что ты получишь:**\n"
+            "💝 Спасибо видеомессаж от группы\n"
+            "🎁 Эксклюзивный контент для донаторов\n"
+            "🎵 Доступ к премиум постам\n"
+            "💬 Прямой контакт с нами\n"
+            "🏆 Статус 'Поддержчик' в чате\n\n"
+            "🔗 Нажми кнопку ниже и донати! 👇"
+        ),
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+async def show_notifications_menu(query, chat_id) -> None:
+    chat_id_str = str(chat_id)
+
+    if chat_id_str not in users_data:
+        users_data[chat_id_str] = {
+            'user_id': query.from_user.id,
+            'username': query.from_user.username or 'unknown',
+            'first_name': query.from_user.first_name,
+            'notifications_enabled': True,
+            'join_date': datetime.now().isoformat()
+        }
+        save_json_file(USERS_FILE, users_data)
+
+    current_status = users_data[chat_id_str]['notifications_enabled']
+    status_text = "✅ ВКЛЮЧЕНЫ" if current_status else "❌ ОТКЛЮЧЕНЫ"
+    status_icon = "🟢" if current_status else "⭕"
+    button_text = "❌ ОТКЛЮЧИТЬ уведомления" if current_status else "✅ ВКЛЮЧИТЬ уведомления"
+
+    keyboard = [
+        [InlineKeyboardButton(button_text, callback_data='toggle_notifications_action')],
+        [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text=(
+            "🔔 **Уведомления о новых релизах:**\n\n"
+            f"{status_icon} Текущий статус: {status_text}\n\n"
+            "Когда выйдет новый трек, ты получишь:\n"
+            "🎵 Название трека\n"
+            "📅 Дату релиза\n"
+            "🎤 Информацию об артистах\n"
+            "🎸 Жанр трека\n"
+            "📝 Полное описание\n"
+            "🎧 Аудиофайл для прослушивания\n\n"
+            "💾 **Статус сохранен!** Останется таким пока ты его не изменишь"
+        ),
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+async def toggle_notifications(query, chat_id) -> None:
+    chat_id_str = str(chat_id)
+
+    if chat_id_str in users_data:
+        current_status = users_data[chat_id_str]['notifications_enabled']
+        users_data[chat_id_str]['notifications_enabled'] = not current_status
+        save_json_file(USERS_FILE, users_data)
+
+        new_status = users_data[chat_id_str]['notifications_enabled']
+        status_text = "✅ ВКЛЮЧЕНЫ" if new_status else "❌ ОТКЛЮЧЕНЫ"
+        status_icon = "🟢" if new_status else "⭕"
+
+        keyboard = [
+            [InlineKeyboardButton("🔔 Уведомления", callback_data='notifications')],
+            [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await query.edit_message_text(
+            text=(
+                "🔔 **Уведомления о новых релизах:**\n\n"
+                f"{status_icon} Статус: {status_text}\n\n"
+                "Когда выйдет новый трек, ты получишь:\n"
+                "🎵 Название трека\n"
+                "📅 Дату релиза\n"
+                "🎤 Информацию об артистах\n"
+                "🎸 Жанр трека\n"
+                "📝 Полное описание\n"
+                "🎧 Аудиофайл для прослушивания\n\n"
+                "💾 **Статус сохранен!** Останется таким пока ты его не изменишь"
+            ),
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+
+async def show_about(query) -> None:
+    keyboard = [
+        [InlineKeyboardButton("📱 Telegram канал", url=TELEGRAM_URL)],
+        [InlineKeyboardButton("🎬 YouTube канал", url=YOUTUBE_URL)],
+        [InlineKeyboardButton("🎵 TikTok", url=TIKTOK_URL)],
+        [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text=(
+            "👥 **О RESPZONA:**\n\n"
+            "RESPZONA — музыкальная группа из Уфы и Стерлитамака 🎶\n\n"
+            "**Команда проекта:**\n"
+            "⭐ **Aryx** — главный идеолог, социальные сети, превью, тексты, "
+            "программирование и программные функции 💻\n"
+            "⭐ **Nng** — социальные сети, превью, тексты, event-менеджер 📱\n"
+            "🎸 **nRIS** — третья гитара, помощник проекта\n\n"
+            "**Наш стиль:** Pop / Rap / Phonk / Electronic 🎵\n\n"
+            "**Следи за нами:**\n"
+            "📱 Telegram: https://t.me/RESPZONA\n"
+            "🎬 YouTube: https://www.youtube.com/@respzonamus\n"
+            "🎵 TikTok: https://www.tiktok.com/@respozona\n"
+            "📧 Email: resp.zona@bk.ru\n\n"
+            "Спасибо, что слушаешь RESPZONA! ❤️"
+        ),
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+async def show_collaboration(query) -> None:
+    keyboard = [
+        [InlineKeyboardButton("📱 Написать Aryx", url=f"https://t.me/{COLLABORATION_CONTACT.replace('@', '')}")],
+        [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text=(
+            "🤝 **СОТРУДНИЧЕСТВО С RESPZONA:**\n\n"
+            "Ты хочешь сотрудничать с нами? Отлично! 🎵\n\n"
+            "✨ **Мы открыты для:**\n"
+            "🎨 Дизайнеров (обложки, визуалы, мерч)\n"
+            "🎬 Видеографов (клипы, превью, обработка)\n"
+            "🎤 Певцов и рэперов (фичеры, синглы)\n"
+            "🎵 Продюсеров (создание биов, миксинг)\n"
+            "📱 Маркетологов (SMM, реклама)\n"
+            "💻 Программистов (сайты, боты, приложения)\n"
+            "🎸 Музыкантов (гитара, бас, ударные)\n\n"
+            "💬 **Как с нами связаться:**\n\n"
+            f"📌 **Контакт для сотрудничества:** {COLLABORATION_CONTACT}\n\n"
+            "💡 **Расскажи нам:**\n"
+            "• Кто ты и чем занимаешься\n"
+            "• Какой идеей ты хочешь помочь\n"
+            "• Портфолио или примеры работ\n"
+            "• Твои контакты для связи\n\n"
+            "⚡ Мы ответим в течение 24 часов!\n\n"
+            "Давай создавать крутую музыку вместе! 🚀"
+        ),
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+async def show_card_details(query, chat_id) -> None:
+    keyboard = [
+        [InlineKeyboardButton("⬅️ Назад к донатам", callback_data='donates')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text=(
+            "💳 **Реквизиты карты:**\n\n"
+            f"**Номер карты:**\n"
+            f"`{CARD_NUMBER}`\n\n"
+            f"**Получатель:** RESPZONA\n\n"
+            "Любая сумма поддержки! 💰\n\n"
+            "❤️ Спасибо за поддержку проекта!\n\n"
+            "После перевода можешь отправить скриншот @respzonachat для спасибо видеомессажа 🎬"
+        ),
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+async def show_yoomoney_details(query, chat_id) -> None:
+    keyboard = [
+        [InlineKeyboardButton("💳 Перейти в YooMoney", url=YOOMONEY_URL)],
+        [InlineKeyboardButton("⬅️ Назад к донатам", callback_data='donates')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text=(
+            "💰 **YooMoney (Яндекс.Касса):**\n\n"
+            "Быстрый способ поддержать группу через цифровой кошелек!\n\n"
+            "✨ **Преимущества:**\n"
+            "✅ Быстрое пополнение\n"
+            "✅ Безопасно\n"
+            "✅ Любая сумма\n\n"
+            "💰 Любая сумма поддержки важна!\n\n"
+            "❤️ Спасибо за поддержку проекта!\n\n"
+            "После пополнения можешь отправить скриншот @respzonachat для спасибо видеомессажа 🎬"
+        ),
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
 
 async def back_to_menu(query) -> None:
     keyboard = [
@@ -802,10 +1050,6 @@ async def back_to_menu(query) -> None:
         [
             InlineKeyboardButton("👥 О нас", callback_data='about'),
             InlineKeyboardButton("🤝 Сотрудничество", callback_data='collaboration')
-        ],
-        [
-            InlineKeyboardButton("🎯 Викторина", callback_data='quiz_start'),
-            InlineKeyboardButton("🏆 Рейтинги", callback_data='ratings')
         ],
         [
             InlineKeyboardButton("🔗 Рефералы", callback_data='referral_menu'),
@@ -825,13 +1069,80 @@ async def back_to_menu(query) -> None:
         parse_mode='Markdown'
     )
 
-# ====================================================================
-# MAIN
-# ====================================================================
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+
+    chat_id = query.message.chat_id
+
+    try:
+        if query.data == 'tracks':
+            await show_tracks(query, chat_id)
+        elif query.data == 'tickets':
+            await show_tickets(query, chat_id)
+        elif query.data == 'donates':
+            await show_donates(query, chat_id)
+        elif query.data == 'upcoming_events':
+            await show_upcoming_events(query, chat_id)
+        elif query.data == 'notifications':
+            await show_notifications_menu(query, chat_id)
+        elif query.data == 'toggle_notifications_action':
+            await toggle_notifications(query, chat_id)
+        elif query.data == 'show_card':
+            await show_card_details(query, chat_id)
+        elif query.data == 'show_yoomoney':
+            await show_yoomoney_details(query, chat_id)
+        elif query.data == 'show_boosty':
+            await show_boosty_details(query, chat_id)
+        elif query.data == 'about':
+            await show_about(query)
+        elif query.data == 'collaboration':
+            await show_collaboration(query)
+        elif query.data == 'back_to_menu':
+            await back_to_menu(query)
+        elif query.data.startswith('play_track_'):
+            track_id = query.data.replace('play_track_', '')
+            await play_track(query, track_id, context)
+        elif query.data.startswith('info_track_'):
+            track_id = query.data.replace('info_track_', '')
+            await show_track_info(query, track_id)
+        
+        # Реферальная система
+        elif query.data == 'referral_menu':
+            await show_referral_menu(query)
+        elif query.data == 'referral_rewards':
+            await show_referral_rewards(query)
+        
+        # Лотерея
+        elif query.data == 'lottery_menu':
+            await show_lottery_menu(query)
+        elif query.data == 'join_lottery':
+            await join_lottery(query)
+        elif query.data == 'lottery_stats':
+            await show_lottery_stats(query)
+        
+        # Опросы
+        elif query.data == 'polls_menu':
+            await show_polls_menu(query)
+        elif query.data == 'current_poll':
+            await show_current_poll(query)
+        elif query.data.startswith('vote_poll_'):
+            option_id = query.data.replace('vote_poll_', '')
+            await vote_poll(query, option_id)
+        elif query.data == 'poll_results':
+            await show_poll_results(query)
+        
+        # Объявления
+        elif query.data == 'announcements_menu':
+            await show_announcements_menu(query)
+    
+    except Exception as e:
+        logger.error(f"❌ Ошибка в button_callback: {e}", exc_info=True)
+        await query.answer(f"❌ Произошла ошибка: {str(e)}", show_alert=True)
 
 def main() -> None:
     logger.info("=" * 60)
-    logger.info("🚀 ЗАПУСК БОТА RESPZONA V3 (С НОВЫМИ ФИЧАМИ)")
+    logger.info("🚀 ЗАПУСК БОТА RESPZONA V4 (ИСПРАВЛЕННАЯ ВЕРСИЯ)")
     logger.info(f"📊 Загружено {len(users_data)} пользователей")
     logger.info("=" * 60)
 
@@ -839,11 +1150,10 @@ def main() -> None:
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("announce", announce_handler))
-
     application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, lambda u, c: None))
 
-    logger.info("🎵 БОТ RESPZONA V3 ГОТОВ К РАБОТЕ!")
+    logger.info("🎵 БОТ RESPZONA V4 ГОТОВ К РАБОТЕ!")
     logger.info("=" * 60)
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
