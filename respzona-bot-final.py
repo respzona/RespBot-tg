@@ -59,7 +59,7 @@ MOTIVATIONAL_QUOTES = [
 TRACKS = {
     'huday': {
         'name': 'HUDAY',
-        'file_id': 'CQACAgIAAxkBAAM6aUWjWuDlBxzAyK-ZQi1JOQ8tvRkAAmuTAALKbTFK7KogMulGkc42BA',
+        'file_id': 'CQACAgIAAxkBAANhaVaocDVsMGfqD7ydZ8PusmNYc60AAt2QAAIRtrhKGcu5eMwsApI4BA',
         'date': '19.06.2025',
         'artists': 'RESPZONA Team',
         'genre': 'Мемный поп/рэп',
@@ -68,7 +68,7 @@ TRACKS = {
     },
     'huday_phonk': {
         'name': 'HUDAY PHONK',
-        'file_id': 'CQACAgIAAxkBAANHaUWluTVBY9v6R2dpf9o1VHJLGpgAApGTAALKbTFKhwWrBH7qkD42BA',
+        'file_id': 'CQACAgIAAxkBAANjaVaoty9NuQjt01IoWbxIS8kMyEMAAuKQAAIRtrhKvfyGOcOPtZI4BA',
         'date': '30.10.2025',
         'artists': 'RESPZONA Team',
         'genre': 'Phonk/Электроника',
@@ -77,7 +77,7 @@ TRACKS = {
     },
     'world_run': {
         'name': 'WORLD RUN PHONK',
-        'file_id': 'CQACAgIAAxkBAANJaUWl3P9Epi17pyrTZAABD1gsKLwkAAKUkwACym0xSrJw9quY1smxNgQ',
+        'file_id': 'CQACAgIAAxkBAANlaVao18Y2p2sq4dulIj5OJrg6rA4AAuWQAAIRtrhKHo_Cz9bMz004BA',
         'date': '01.11.2025',
         'artists': 'RESPZONA Team',
         'genre': 'Phonk/Киберпанк',
