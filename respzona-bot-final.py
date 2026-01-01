@@ -26,7 +26,6 @@ TIKTOK_STREAM_URL = "https://www.tiktok.com/@respozona/live"
 
 # ⭐ ССЫЛКИ НА ПОДДЕРЖКУ
 YOOMONEY_URL = "https://yoomoney.ru/to/4100118663676748"
-MERCH_URL = "https://respzona-merch.printful.com/"
 BOOSTY_DONATE_URL = "https://boosty.to/respzona/donate"
 
 # Реквизиты
@@ -35,7 +34,6 @@ CARD_HOLDER = "RESPZONA"
 
 USERS_FILE = "users_data.json"
 POLLS_FILE = "polls_data.json"
-SCHEDULED_FILE = "scheduled_messages.json"
 
 # Твой админ-ID
 ADMIN_ID = 8026939529
@@ -133,184 +131,6 @@ def save_json_file(filename, data):
 
 users_data = load_json_file(USERS_FILE)
 polls_data = load_json_file(POLLS_FILE)
-scheduled_data = load_json_file(SCHEDULED_FILE)
-
-# ====================================================================
-# РЕФЕРАЛЬНАЯ СИСТЕМА 🔗 (ИСПРАВЛЕННАЯ)
-# ====================================================================
-
-async def show_referral_menu(query) -> None:
-    """Показывает меню реферальной системы"""
-    user_id = str(query.from_user.id)
-    
-    # Проверяем в users_data по user_id
-    user_found = False
-    referral_count = 0
-    
-    for chat_id_str, user_info in users_data.items():
-        if str(user_info.get('user_id')) == user_id:
-            user_found = True
-            referral_count = user_info.get('referral_count', 0)
-            break
-    
-    # Генерируем реферальную ссылку
-    ref_link = f"https://t.me/RESPZONA_bot?start={user_id}"
-    
-    keyboard = [
-        [InlineKeyboardButton("📋 Скопировать ссылку", callback_data='copy_ref_link')],
-        [InlineKeyboardButton("👥 Мои рефералы", callback_data='show_referrals')],
-        [InlineKeyboardButton("🎁 Награды", callback_data='show_rewards')],
-        [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    text = (
-        f"🔗 **РЕФЕРАЛЬНАЯ СИСТЕМА RESPZONA** 🔗\n\n"
-        f"Приглашай друзей и получай награды!\n\n"
-        f"👥 **Твои рефералы:** {referral_count}\n\n"
-        f"**Твоя ссылка:**\n"
-        f"`{ref_link}`\n\n"
-        f"💎 **Награды за рефералов:**\n"
-        f"• 5 рефералов → скидка 10% на мерч\n"
-        f"• 10 рефералов → эксклюзивное видео\n"
-        f"• 25 рефералов → пожизненная премиум доступ\n\n"
-        f"🔄 Когда твой друг присоединится - оба получите бонус!"
-    )
-    
-    await query.edit_message_text(
-        text=text,
-        reply_markup=reply_markup,
-        parse_mode='Markdown'
-    )
-
-async def show_referral_rewards(query) -> None:
-    """Показывает доступные награды"""
-    user_id = str(query.from_user.id)
-    
-    # Ищем пользователя в users_data
-    referral_count = 0
-    for chat_id_str, user_info in users_data.items():
-        if str(user_info.get('user_id')) == user_id:
-            referral_count = user_info.get('referral_count', 0)
-            break
-    
-    keyboard = [[InlineKeyboardButton("⬅️ Назад", callback_data='referral_menu')]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    rewards_text = f"🎁 **СИСТЕМА НАГРАДА RESPZONA** 🎁\n\n"
-    rewards_text += f"👥 У тебя сейчас: **{referral_count}** рефералов\n\n"
-    rewards_text += "📊 **Таблица наград:**\n\n"
-    
-    rewards = [
-        ("5 рефералов", "10% скидка на весь мерч", "5", referral_count >= 5),
-        ("10 рефералов", "Эксклюзивное видео с группой", "10", referral_count >= 10),
-        ("15 рефералов", "Фирменная кепка RESPZONA", "15", referral_count >= 15),
-        ("25 рефералов", "Пожизненный премиум доступ", "25", referral_count >= 25),
-        ("50 рефералов", "Встреча с группой (онлайн)", "50", referral_count >= 50),
-    ]
-    
-    for milestone, reward, count, unlocked in rewards:
-        icon = "✅" if unlocked else "🔒"
-        rewards_text += f"{icon} **{count}+ рефералов**: {reward}\n"
-    
-    rewards_text += "\n💡 Совет: Поделись ссылкой в своём статусе в соцсетях!"
-    
-    await query.edit_message_text(
-        text=rewards_text,
-        reply_markup=reply_markup,
-        parse_mode='Markdown'
-    )
-
-async def handle_referral_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработка присоединения по реферальной ссылке"""
-    user = update.effective_user
-    chat_id = update.effective_chat.id
-    chat_id_str = str(chat_id)
-    
-    # Проверяем есть ли реферер ID
-    if context.args and context.args[0].isdigit():
-        referrer_id = int(context.args[0])
-        
-        # Ищем реферера в users_data
-        referrer_found = False
-        for chat_id_ref, user_info in users_data.items():
-            if user_info.get('user_id') == referrer_id:
-                referrer_found = True
-                referrer_chat_id_str = chat_id_ref
-                break
-        
-        # Добавляем нового пользователя
-        if chat_id_str not in users_data:
-            users_data[chat_id_str] = {
-                'user_id': user.id,
-                'username': user.username or 'unknown',
-                'first_name': user.first_name,
-                'notifications_enabled': True,
-                'join_date': datetime.now().isoformat(),
-                'referrer_id': referrer_id,
-                'referral_count': 0
-            }
-            
-            # Увеличиваем счетчик рефералов у пригласившего
-            if referrer_found:
-                for chat_id_ref, user_info in users_data.items():
-                    if user_info.get('user_id') == referrer_id:
-                        user_info['referral_count'] = user_info.get('referral_count', 0) + 1
-                        break
-            
-            save_json_file(USERS_FILE, users_data)
-            logger.info(f"✅ Новый реферал: {user.first_name} (от {referrer_id})")
-    else:
-        # Просто добавляем нового пользователя если его нет
-        if chat_id_str not in users_data:
-            users_data[chat_id_str] = {
-                'user_id': user.id,
-                'username': user.username or 'unknown',
-                'first_name': user.first_name,
-                'notifications_enabled': True,
-                'join_date': datetime.now().isoformat(),
-                'referral_count': 0
-            }
-            save_json_file(USERS_FILE, users_data)
-    
-    # Стандартная команда /start
-    keyboard = [
-        [InlineKeyboardButton("🎵 Приложение Respzona", web_app=WebAppInfo(url=WEBAPP_URL))],
-        [
-            InlineKeyboardButton("🎵 Треки", callback_data='tracks'),
-            InlineKeyboardButton("🎟️ Билеты", callback_data='tickets')
-        ],
-        [
-            InlineKeyboardButton("💳 Донаты", callback_data='donates'),
-            InlineKeyboardButton("🔔 Уведомления", callback_data='notifications')
-        ],
-        [
-            InlineKeyboardButton("👥 О нас", callback_data='about'),
-        ],
-        [
-            InlineKeyboardButton("🔗 Рефералы", callback_data='referral_menu'),
-            InlineKeyboardButton("📊 Опросы", callback_data='polls_menu'),
-        ],
-        [
-            InlineKeyboardButton("📢 Объявления", callback_data='announcements_menu')
-        ],
-        [InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL)]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await update.message.reply_text(
-        f"🎶 Привет, {user.first_name}! Добро пожаловать в RESPZONA! 🎶\n\n"
-        f"Мы - музыкальная группа из Уфы и Стерлитамака.\n"
-        f"Здесь ты можешь:\n"
-        f"✨ Слушать наши треки онлайн\n"
-        f"🎤 Узнать о концертах и событиях\n"
-        f"💳 Поддержать развитие проекта\n"
-        f"🔔 Включить уведомления о новых релизах\n"
-        f"🔗 Приглашать друзей и получать награды\n"
-        f"📱 Следить за нами в социальных сетях\n\n"
-        f"Выбери нужный пункт меню ниже!",
-        reply_markup=reply_markup
-    )
 
 # ====================================================================
 # ОПРОСЫ И ГОЛОСОВАНИЕ 📊
@@ -461,8 +281,7 @@ async def show_announcements_menu(query) -> None:
         return
     
     keyboard = [
-        [InlineKeyboardButton("📢 Отправить объявление", callback_data='send_announcement')],
-        [InlineKeyboardButton("📋 История объявлений", callback_data='announcements_history')],
+        [InlineKeyboardButton("📢 Инструкция", callback_data='announce_help')],
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -470,9 +289,35 @@ async def show_announcements_menu(query) -> None:
     await query.edit_message_text(
         text="📢 **ОБЪЯВЛЕНИЯ И РАССЫЛКИ** 📢\n\n"
              "Админ-панель для отправки сообщений всем пользователям.\n\n"
-             "📤 **Отправить сейчас** - мгновенная рассылка\n"
-             "📋 **История** - все отправленные объявления\n\n"
-             "⚠️ **Помни:** объявления видят все пользователи с включенными уведомлениями!",
+             "📤 Используй команду: `/announce текст сообщения`\n\n"
+             "💡 Пример:\n"
+             "`/announce 🎉 Новый трек ВЫХОДИТ СЕЙЧАС!`",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+async def announce_help(query) -> None:
+    """Показывает инструкцию по объявлениям"""
+    keyboard = [[InlineKeyboardButton("⬅️ Назад", callback_data='announcements_menu')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        text=(
+            "📢 **КАК ОТПРАВИТЬ ОБЪЯВЛЕНИЕ:**\n\n"
+            "1️⃣ **Команда:** `/announce текст`\n\n"
+            "2️⃣ **Примеры:**\n"
+            "`/announce 🎉 Новый трек выходит!\n`"
+            "`/announce 📅 Стрим завтра в 19:00`\n"
+            "`/announce 🎁 Спасибо за поддержку!`\n\n"
+            "3️⃣ **Объявление отправится:**\n"
+            "✅ Всем пользователям\n"
+            "✅ С включенными уведомлениями\n"
+            "✅ Сразу же\n\n"
+            "📊 **Ты получишь статистику:**\n"
+            "✅ Сколько доставлено\n"
+            "❌ Сколько ошибок\n"
+            "🚫 Сколько заблокировало"
+        ),
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
@@ -486,7 +331,8 @@ async def announce_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     
     if not context.args:
         await update.message.reply_text(
-            "📢 Использование: `/announce Твое сообщение`",
+            "📢 **Использование:** `/announce текст сообщения`\n\n"
+            "📝 Пример: `/announce 🎉 Новый трек выходит сейчас!`",
             parse_mode='Markdown'
         )
         return
@@ -497,26 +343,15 @@ async def announce_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await update.message.reply_text("❌ Сообщение слишком длинное (макс 4096 символов)")
         return
     
-    # Сохраняем в историю
-    if 'announcements' not in scheduled_data:
-        scheduled_data['announcements'] = []
-    
-    announcement = {
-        'text': message_text,
-        'sent_at': datetime.now().isoformat(),
-        'status': 'sending',
-        'recipients': 0
-    }
-    
     await update.message.reply_text(
-        "📢 Отправляю объявление всем...\n⏳ Это может занять несколько секунд..."
+        "📢 **Отправляю объявление всем...**\n⏳ Это может занять несколько секунд..."
     )
     
     sent_count = 0
     failed_count = 0
     blocked_count = 0
     
-    # Отправляем всем активным пользователям
+    # Отправляем всем пользователям с включенными уведомлениями
     for chat_id_str, user_data in users_data.items():
         if user_data.get('notifications_enabled', True):
             try:
@@ -527,38 +362,86 @@ async def announce_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     parse_mode='Markdown'
                 )
                 sent_count += 1
+                logger.info(f"✅ Объявление отправлено {chat_id}")
             except Exception as e:
                 error_msg = str(e).lower()
+                logger.warning(f"⚠️ Ошибка отправки {chat_id}: {error_msg}")
                 if 'blocked' in error_msg or 'forbidden' in error_msg:
                     blocked_count += 1
                     user_data['notifications_enabled'] = False
-                    save_json_file(USERS_FILE, users_data)
                 else:
                     failed_count += 1
     
-    announcement['status'] = 'sent'
-    announcement['recipients'] = sent_count
-    scheduled_data['announcements'].append(announcement)
-    save_json_file(SCHEDULED_FILE, scheduled_data)
+    save_json_file(USERS_FILE, users_data)
     
     report = (
         f"✅ **ОБЪЯВЛЕНИЕ ОТПРАВЛЕНО!**\n\n"
-        f"📊 **Статистика:**\n"
-        f"✅ Доставлено: **{sent_count}**\n"
+        f"📊 **СТАТИСТИКА:**\n"
+        f"✅ Доставлено: **{sent_count}** пользователей\n"
         f"❌ Ошибок: **{failed_count}**\n"
-        f"🚫 Заблокировано: **{blocked_count}**\n"
-        f"📈 Всего пользователей: **{len(users_data)}**"
+        f"🚫 Заблокировало: **{blocked_count}**\n"
+        f"📈 Всего в БД: **{len(users_data)}**"
     )
     
     await update.message.reply_text(report, parse_mode='Markdown')
-    logger.info(f"📢 Объявление отправлено: {sent_count} юзерам")
+    logger.info(f"📢 ОБЪЯВЛЕНИЕ ОТПРАВЛЕНО: {sent_count}/{len(users_data)} юзерам ✅")
 
 # ====================================================================
 # ОСНОВНЫЕ ФУНКЦИИ
 # ====================================================================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await handle_referral_start(update, context)
+    user = update.effective_user
+    chat_id = update.effective_chat.id
+    chat_id_str = str(chat_id)
+    
+    # Добавляем пользователя в БД
+    if chat_id_str not in users_data:
+        users_data[chat_id_str] = {
+            'user_id': user.id,
+            'username': user.username or 'unknown',
+            'first_name': user.first_name,
+            'notifications_enabled': True,
+            'join_date': datetime.now().isoformat()
+        }
+        save_json_file(USERS_FILE, users_data)
+        logger.info(f"✅ Новый пользователь: {user.first_name}")
+    
+    keyboard = [
+        [InlineKeyboardButton("🎵 Приложение Respzona", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [
+            InlineKeyboardButton("🎵 Треки", callback_data='tracks'),
+            InlineKeyboardButton("🎟️ Билеты", callback_data='tickets')
+        ],
+        [
+            InlineKeyboardButton("💳 Донаты", callback_data='donates'),
+            InlineKeyboardButton("🔔 Уведомления", callback_data='notifications')
+        ],
+        [
+            InlineKeyboardButton("👥 О нас", callback_data='about'),
+        ],
+        [
+            InlineKeyboardButton("📊 Опросы", callback_data='polls_menu'),
+        ],
+        [
+            InlineKeyboardButton("📢 Объявления", callback_data='announcements_menu')
+        ],
+        [InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL)]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(
+        f"🎶 Привет, {user.first_name}! Добро пожаловать в RESPZONA! 🎶\n\n"
+        f"Мы - музыкальная группа из Уфы и Стерлитамака.\n"
+        f"Здесь ты можешь:\n"
+        f"✨ Слушать наши треки онлайн\n"
+        f"🎤 Узнать о концертах и событиях\n"
+        f"💳 Поддержать развитие проекта\n"
+        f"🔔 Включить уведомления о новых релизах\n"
+        f"📱 Следить за нами в социальных сетях\n\n"
+        f"Выбери нужный пункт меню ниже!",
+        reply_markup=reply_markup
+    )
 
 async def show_tracks(query, chat_id) -> None:
     keyboard = [
@@ -961,7 +844,6 @@ async def back_to_menu(query) -> None:
             InlineKeyboardButton("👥 О нас", callback_data='about'),
         ],
         [
-            InlineKeyboardButton("🔗 Рефералы", callback_data='referral_menu'),
             InlineKeyboardButton("📊 Опросы", callback_data='polls_menu'),
         ],
         [
@@ -1015,12 +897,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             track_id = query.data.replace('info_track_', '')
             await show_track_info(query, track_id)
         
-        # Реферальная система
-        elif query.data == 'referral_menu':
-            await show_referral_menu(query)
-        elif query.data == 'show_rewards':
-            await show_referral_rewards(query)
-        
         # Опросы
         elif query.data == 'polls_menu':
             await show_polls_menu(query)
@@ -1035,16 +911,18 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         # Объявления
         elif query.data == 'announcements_menu':
             await show_announcements_menu(query)
+        elif query.data == 'announce_help':
+            await announce_help(query)
     
     except Exception as e:
         logger.error(f"❌ Ошибка в button_callback: {e}", exc_info=True)
         await query.answer(f"❌ Произошла ошибка: {str(e)}", show_alert=True)
 
 def main() -> None:
-    logger.info("=" * 60)
-    logger.info("🚀 ЗАПУСК БОТА RESPZONA V6 (ФИНАЛЬНАЯ ВЕРСИЯ)")
+    logger.info("=" * 70)
+    logger.info("🚀 ЗАПУСК БОТА RESPZONA V8 (БЕЗ РЕФЕРАЛОВ)")
     logger.info(f"📊 Загружено {len(users_data)} пользователей")
-    logger.info("=" * 60)
+    logger.info("=" * 70)
 
     application = Application.builder().token(TOKEN).build()
 
@@ -1053,8 +931,10 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, lambda u, c: None))
 
-    logger.info("🎵 БОТ RESPZONA V6 ГОТОВ К РАБОТЕ!")
-    logger.info("=" * 60)
+    logger.info("✅ РЕФЕРАЛЫ: УДАЛЕНЫ")
+    logger.info("✅ ОБЪЯВЛЕНИЯ: РАБОЧИЕ")
+    logger.info("🎵 БОТ RESPZONA V8 ГОТОВ К РАБОТЕ!")
+    logger.info("=" * 70)
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
