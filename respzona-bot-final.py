@@ -61,7 +61,7 @@ TRACKS = {
         'name': 'HUDAY',
         'file_id': 'CQACAgIAAxkBAANhaVaocDVsMGfqD7ydZ8PusmNYc60AAt2QAAIRtrhKGcu5eMwsApI4BA',
         'date': '19.06.2025',
-        'artists': 'RESPZONA Team',
+        'artists': 'Aryx, Nng',
         'genre': 'Мемный поп/рэп',
         'description': 'Мемный по настроению, но при этом завалакивающий трек про бездомного и пирог',
         'emoji': '🥧'
@@ -70,7 +70,7 @@ TRACKS = {
         'name': 'HUDAY PHONK',
         'file_id': 'CQACAgIAAxkBAANjaVaoty9NuQjt01IoWbxIS8kMyEMAAuKQAAIRtrhKvfyGOcOPtZI4BA',
         'date': '30.10.2025',
-        'artists': 'RESPZONA Team',
+        'artists': 'Aryx, Nng',
         'genre': 'Phonk/Электроника',
         'description': 'Киберпанк-версия легендарного HUDAY с неоновыми синтезаторами',
         'emoji': '🌆'
@@ -79,19 +79,19 @@ TRACKS = {
         'name': 'WORLD RUN PHONK',
         'file_id': 'CQACAgIAAxkBAANlaVao18Y2p2sq4dulIj5OJrg6rA4AAuWQAAIRtrhKHo_Cz9bMz004BA',
         'date': '01.11.2025',
-        'artists': 'RESPZONA Team',
+        'artists': 'Aryx, Nng',
         'genre': 'Phonk/Киберпанк',
         'description': 'Энергетичный трек про скорость, адреналин и движение',
         'emoji': '🏃'
     },
-    'secret': {
-        'name': '🔒 СЕКРЕТНЫЙ ТРЕК',
+    'midnight_glow': {
+        'name': '🌙 MIDNIGHT GLOW',
         'file_id': None,
-        'date': '❓ Дата секрет',
-        'artists': 'RESPZONA Team',
-        'genre': 'Сюрприз',
-        'description': 'Новый трек выйдет очень скоро! Следи за нашими обновлениями 🎵',
-        'emoji': '🔒'
+        'date': '❓ Скоро',
+        'artists': 'Aryx, Nng',
+        'genre': 'Электроника/Лирика',
+        'description': 'Новый трек выходит очень скоро! Ночной звук с лирическим посланием',
+        'emoji': '🌙'
     }
 }
 
@@ -380,8 +380,8 @@ async def show_tracks(query, chat_id) -> None:
             InlineKeyboardButton("▶️ Слушать", callback_data='play_track_world_run')
         ],
         [
-            InlineKeyboardButton("🔒 СЕКРЕТНЫЙ ТРЕК", callback_data='info_track_secret'),
-            InlineKeyboardButton("❓ Узнать", callback_data='info_track_secret')
+            InlineKeyboardButton("🌙 MIDNIGHT GLOW", callback_data='info_track_midnight_glow'),
+            InlineKeyboardButton("❓ Узнать", callback_data='info_track_midnight_glow')
         ],
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
@@ -398,7 +398,7 @@ async def show_tracks(query, chat_id) -> None:
             "🎵 HUDAY - мемный поп/рэп про пирог 🥧\n"
             "🎵 HUDAY PHONK - киберпанк версия 🌆\n"
             "🎵 WORLD RUN PHONK - энергетичный phonk 🏃\n"
-            "🔒 СЕКРЕТНЫЙ ТРЕК - выходит скоро! 🎉\n\n"
+            "🌙 MIDNIGHT GLOW - новый трек выходит скоро! 🌙\n\n"
             "Нажми 'Слушать' для прослушивания или имя для подробностей:\n\n"
             f"💭 *{quote}*"
         ),
@@ -415,11 +415,9 @@ async def play_track(query, track_id, context) -> None:
 
     if track['file_id'] is None:
         await query.answer(
-            "⚠️ Трек еще не загружен в бота\n\n"
-            "1️⃣ Отправь аудиофайл боту\n"
-            "2️⃣ Скопируй File ID из ответа\n"
-            "3️⃣ Вставь в код TRACKS\n\n"
-            "📱 Слушай на @RESPZONA",
+            "⚠️ Этот трек еще не вышел! 🔒\n\n"
+            "Следи за нашими обновлениями чтобы не пропустить релиз! 🎵\n\n"
+            "📱 Подпишись на уведомления",
             show_alert=True
         )
     else:
@@ -430,12 +428,13 @@ async def play_track(query, track_id, context) -> None:
                 title=track['name'],
                 performer='RESPZONA'
             )
-            await query.answer(f"▶️ Проигрывается: {track['name']}")
+            await query.answer(f"✅ Отправляю: {track['name']}")
+            logger.info(f"✅ Трек {track_id} отправлен пользователю {query.message.chat_id}")
         except Exception as e:
-            logger.error(f"Ошибка воспроизведения трека: {e}")
+            logger.error(f"❌ Ошибка воспроизведения трека: {e}")
             await query.answer(
                 "❌ Ошибка при загрузке трека\n\n"
-                "Слушай в Telegram @RESPZONA",
+                "Слушай на YouTube @respzonamus",
                 show_alert=True
             )
 
@@ -793,7 +792,7 @@ async def show_about(query) -> None:
 
 async def show_collaboration(query) -> None:
     keyboard = [
-        [InlineKeyboardButton("📱 Написать Нам", url=f"https://t.me/{COLLABORATION_CONTACT.replace('@', '')}")],
+        [InlineKeyboardButton("📱 Написать Aryx", url=f"https://t.me/{COLLABORATION_CONTACT.replace('@', '')}")],
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
