@@ -38,7 +38,6 @@ CARD_HOLDER = "RESPZONA"
 
 USERS_FILE = "users_data.json"
 REFERRALS_FILE = "referrals_data.json"
-LOTTERY_FILE = "lottery_data.json"
 POLLS_FILE = "polls_data.json"
 SCHEDULED_FILE = "scheduled_messages.json"
 
@@ -137,61 +136,67 @@ def save_json_file(filename, data):
         logger.error(f"❌ Ошибка сохранения {filename}: {e}")
 
 users_data = load_json_file(USERS_FILE)
-referrals_data = load_json_file(REFERRALS_FILE)
-lottery_data = load_json_file(LOTTERY_FILE)
 polls_data = load_json_file(POLLS_FILE)
 scheduled_data = load_json_file(SCHEDULED_FILE)
 
 # ====================================================================
-# РЕФЕРАЛЬНАЯ СИСТЕМА 🔗
+# РЕФЕРАЛЬНАЯ СИСТЕМА 🔗 (ИСПРАВЛЕННАЯ)
 # ====================================================================
 
 async def show_referral_menu(query) -> None:
     """Показывает меню реферальной системы"""
-    user_id = query.from_user.id
-    chat_id_str = str(query.message.chat_id)
+    user_id = str(query.from_user.id)
     
-    if chat_id_str not in users_data:
-        await query.answer("❌ Ты не зарегистрирован в системе", show_alert=True)
-        return
+    # Проверяем в users_data по user_id
+    user_found = False
+    referral_count = 0
     
-    referral_count = users_data[chat_id_str].get('referral_count', 0)
+    for chat_id_str, user_info in users_data.items():
+        if str(user_info.get('user_id')) == user_id:
+            user_found = True
+            referral_count = user_info.get('referral_count', 0)
+            break
     
     # Генерируем реферальную ссылку
-    ref_link = f"https://t.me/RESPZONA?start={user_id}"
+    ref_link = f"https://t.me/RESPZONA_bot?start={user_id}"
     
     keyboard = [
-        [InlineKeyboardButton("📋 Скопировать ссылку", callback_data='copy_referral_link')],
-        [InlineKeyboardButton("👥 Мои рефералы", callback_data='show_my_referrals')],
-        [InlineKeyboardButton("🎁 Награды", callback_data='referral_rewards')],
+        [InlineKeyboardButton("📋 Скопировать ссылку", callback_data='copy_ref_link')],
+        [InlineKeyboardButton("👥 Мои рефералы", callback_data='show_referrals')],
+        [InlineKeyboardButton("🎁 Награды", callback_data='show_rewards')],
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
+    text = (
+        f"🔗 **РЕФЕРАЛЬНАЯ СИСТЕМА RESPZONA** 🔗\n\n"
+        f"Приглашай друзей и получай награды!\n\n"
+        f"👥 **Твои рефералы:** {referral_count}\n\n"
+        f"**Твоя ссылка:**\n"
+        f"`{ref_link}`\n\n"
+        f"💎 **Награды за рефералов:**\n"
+        f"• 5 рефералов → скидка 10% на мерч\n"
+        f"• 10 рефералов → эксклюзивное видео\n"
+        f"• 25 рефералов → пожизненная премиум доступ\n\n"
+        f"🔄 Когда твой друг присоединится - оба получите бонус!"
+    )
+    
     await query.edit_message_text(
-        text=f"🔗 **РЕФЕРАЛЬНАЯ СИСТЕМА RESPZONA** 🔗\n\n"
-             f"Приглашай друзей и получай награды!\n\n"
-             f"👥 **Твои рефералы:** {referral_count}\n\n"
-             f"**Твоя ссылка:**\n"
-             f"`{ref_link}`\n\n"
-             f"💎 **Награды за рефералов:**\n"
-             f"• 5 рефералов → скидка 10% на мерч\n"
-             f"• 10 рефералов → эксклюзивное видео\n"
-             f"• 25 рефералов → пожизненная премиум доступ\n\n"
-             f"🔄 Когда твой друг присоединится - оба получите бонус!",
+        text=text,
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
 
 async def show_referral_rewards(query) -> None:
     """Показывает доступные награды"""
-    chat_id_str = str(query.message.chat_id)
+    user_id = str(query.from_user.id)
     
-    if chat_id_str not in users_data:
-        await query.answer("❌ Ты не зарегистрирован", show_alert=True)
-        return
-    
-    referral_count = users_data[chat_id_str].get('referral_count', 0)
+    # Ищем пользователя в users_data
+    referral_count = 0
+    for chat_id_str, user_info in users_data.items():
+        if str(user_info.get('user_id')) == user_id:
+            referral_count = user_info.get('referral_count', 0)
+            break
     
     keyboard = [[InlineKeyboardButton("⬅️ Назад", callback_data='referral_menu')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -229,42 +234,36 @@ async def handle_referral_start(update: Update, context: ContextTypes.DEFAULT_TY
     # Проверяем есть ли реферер ID
     if context.args and context.args[0].isdigit():
         referrer_id = int(context.args[0])
-        referrer_chat_id_str = str(referrer_id)
         
-        # Проверяем что реферер существует
-        if referrer_chat_id_str in users_data:
-            # Добавляем нового пользователя
-            if chat_id_str not in users_data:
-                users_data[chat_id_str] = {
-                    'user_id': user.id,
-                    'username': user.username or 'unknown',
-                    'first_name': user.first_name,
-                    'notifications_enabled': True,
-                    'join_date': datetime.now().isoformat(),
-                    'referrer_id': referrer_id,
-                    'referral_count': 0
-                }
-                
-                # Увеличиваем счетчик рефералов у пригласившего
-                users_data[referrer_chat_id_str]['referral_count'] = \
-                    users_data[referrer_chat_id_str].get('referral_count', 0) + 1
-                
-                save_json_file(USERS_FILE, users_data)
-                
-                # Отправляем сообщение реферёру
-                try:
-                    await context.bot.send_message(
-                        chat_id=referrer_id,
-                        text=f"🎉 **НОВЫЙ РЕФЕРАЛ!** 🎉\n\n"
-                             f"👤 **{user.first_name}** присоединился по твоей ссылке!\n\n"
-                             f"👥 Твоих рефералов: **{users_data[referrer_chat_id_str]['referral_count']}**\n\n"
-                             f"🎁 Ты близко к следующей награде! Продолжай приглашать!",
-                        parse_mode='Markdown'
-                    )
-                except:
-                    pass
-                
-                logger.info(f"✅ Новый реферал: {user.first_name} (от {referrer_id})")
+        # Ищем реферера в users_data
+        referrer_found = False
+        for chat_id_ref, user_info in users_data.items():
+            if user_info.get('user_id') == referrer_id:
+                referrer_found = True
+                referrer_chat_id_str = chat_id_ref
+                break
+        
+        # Добавляем нового пользователя
+        if chat_id_str not in users_data:
+            users_data[chat_id_str] = {
+                'user_id': user.id,
+                'username': user.username or 'unknown',
+                'first_name': user.first_name,
+                'notifications_enabled': True,
+                'join_date': datetime.now().isoformat(),
+                'referrer_id': referrer_id,
+                'referral_count': 0
+            }
+            
+            # Увеличиваем счетчик рефералов у пригласившего
+            if referrer_found:
+                for chat_id_ref, user_info in users_data.items():
+                    if user_info.get('user_id') == referrer_id:
+                        user_info['referral_count'] = user_info.get('referral_count', 0) + 1
+                        break
+            
+            save_json_file(USERS_FILE, users_data)
+            logger.info(f"✅ Новый реферал: {user.first_name} (от {referrer_id})")
     else:
         # Просто добавляем нового пользователя если его нет
         if chat_id_str not in users_data:
@@ -291,14 +290,12 @@ async def handle_referral_start(update: Update, context: ContextTypes.DEFAULT_TY
         ],
         [
             InlineKeyboardButton("👥 О нас", callback_data='about'),
-            InlineKeyboardButton("🤝 Сотрудничество", callback_data='collaboration')
         ],
         [
             InlineKeyboardButton("🔗 Рефералы", callback_data='referral_menu'),
-            InlineKeyboardButton("🎰 Лотерея", callback_data='lottery_menu')
+            InlineKeyboardButton("📊 Опросы", callback_data='polls_menu'),
         ],
         [
-            InlineKeyboardButton("📊 Опросы", callback_data='polls_menu'),
             InlineKeyboardButton("📢 Объявления", callback_data='announcements_menu')
         ],
         [InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL)]
@@ -320,89 +317,6 @@ async def handle_referral_start(update: Update, context: ContextTypes.DEFAULT_TY
     )
 
 # ====================================================================
-# ЛОТЕРЕЯ ДЛЯ ДОНАТОРОВ 🎰
-# ====================================================================
-
-async def show_lottery_menu(query) -> None:
-    """Показывает меню лотереи"""
-    
-    keyboard = [
-        [InlineKeyboardButton("🎰 Принять участие", callback_data='join_lottery')],
-        [InlineKeyboardButton("📊 Статистика лотереи", callback_data='lottery_stats')],
-        [InlineKeyboardButton("🏆 Предыдущие победители", callback_data='lottery_winners')],
-        [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await query.edit_message_text(
-        text="🎰 **ЛОТЕРЕЯ RESPZONA** 🎰\n\n"
-             "Поддержи группу донатом и участвуй в ежемесячном розыгрыше!\n\n"
-             "🎁 **Как это работает:**\n"
-             "1️⃣ Поддержи нас донатом (любая сумма)\n"
-             "2️⃣ За каждые 100₽ - один билет в лотерею\n"
-             "3️⃣ Каждый месяц мы проводим розыгрыш\n"
-             "4️⃣ Победители получают крутые призы!\n\n"
-             "🏆 **Что можно выиграть:**\n"
-             "🥇 1-е место: Эксклюзивная встреча с группой (онлайн)\n"
-             "🥈 2-е место: Фирменный мерч пакет\n"
-             "🥉 3-е место: 500₽ на следующий донат\n\n"
-             "⏰ **Следующая лотерея:** 31.01.2026 в 20:00",
-        reply_markup=reply_markup,
-        parse_mode='Markdown'
-    )
-
-async def join_lottery(query) -> None:
-    """Присоединиться к лотерее"""
-    chat_id_str = str(query.message.chat_id)
-    
-    if chat_id_str not in users_data:
-        await query.answer("❌ Ты не зарегистрирован", show_alert=True)
-        return
-    
-    keyboard = [
-        [InlineKeyboardButton("💳 Карта", callback_data='show_card')],
-        [InlineKeyboardButton("💎 Boosty", callback_data='show_boosty')],
-        [InlineKeyboardButton("💰 YooMoney", callback_data='show_yoomoney')],
-        [InlineKeyboardButton("⬅️ Назад", callback_data='lottery_menu')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await query.edit_message_text(
-        text="💳 **ПРИНЯТЬ УЧАСТИЕ В ЛОТЕРЕЕ**\n\n"
-             "Выбери способ поддержки:\n\n"
-             "💎 Boosty - рекомендуется\n"
-             "💳 Карта Т-Банк - прямой перевод\n"
-             "💰 YooMoney - цифровой кошелек\n\n"
-             "После поддержки отправь скриншот @respzonachat\n"
-             "и мы добавим тебя в розыгрыш!",
-        reply_markup=reply_markup,
-        parse_mode='Markdown'
-    )
-
-async def show_lottery_stats(query) -> None:
-    """Показывает статистику лотереи"""
-    
-    if 'lottery' not in lottery_data:
-        lottery_data['lottery'] = {'participants': 0, 'prize_pool': 0}
-    
-    stats = lottery_data['lottery']
-    
-    keyboard = [[InlineKeyboardButton("⬅️ Назад", callback_data='lottery_menu')]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await query.edit_message_text(
-        text="📊 **СТАТИСТИКА ЛОТЕРЕИ**\n\n"
-             f"👥 Участников: **{stats.get('participants', 0)}**\n"
-             f"💰 Общая сумма призов: **{stats.get('prize_pool', 0)}₽**\n\n"
-             f"🎰 Шанс выигрыша главного приза: **1/{max(1, stats.get('participants', 1))}**\n\n"
-             f"⏰ Следующий розыгрыш: 31.01.2026\n"
-             f"🕐 Время: 20:00 по Мск\n\n"
-             f"Чем больше ты поддержишь - тем выше шанс выигрыша!",
-        reply_markup=reply_markup,
-        parse_mode='Markdown'
-    )
-
-# ====================================================================
 # ОПРОСЫ И ГОЛОСОВАНИЕ 📊
 # ====================================================================
 
@@ -412,7 +326,6 @@ async def show_polls_menu(query) -> None:
     keyboard = [
         [InlineKeyboardButton("🎵 Текущий опрос", callback_data='current_poll')],
         [InlineKeyboardButton("📈 Результаты", callback_data='poll_results')],
-        [InlineKeyboardButton("📋 История опросов", callback_data='poll_history')],
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -553,7 +466,6 @@ async def show_announcements_menu(query) -> None:
     
     keyboard = [
         [InlineKeyboardButton("📢 Отправить объявление", callback_data='send_announcement')],
-        [InlineKeyboardButton("⏰ Запланировать", callback_data='schedule_announcement')],
         [InlineKeyboardButton("📋 История объявлений", callback_data='announcements_history')],
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
@@ -563,7 +475,6 @@ async def show_announcements_menu(query) -> None:
         text="📢 **ОБЪЯВЛЕНИЯ И РАССЫЛКИ** 📢\n\n"
              "Админ-панель для отправки сообщений всем пользователям.\n\n"
              "📤 **Отправить сейчас** - мгновенная рассылка\n"
-             "⏰ **Запланировать** - отложенная отправка\n"
              "📋 **История** - все отправленные объявления\n\n"
              "⚠️ **Помни:** объявления видят все пользователи с включенными уведомлениями!",
         reply_markup=reply_markup,
@@ -935,6 +846,7 @@ async def show_about(query) -> None:
         [InlineKeyboardButton("📱 Telegram канал", url=TELEGRAM_URL)],
         [InlineKeyboardButton("🎬 YouTube канал", url=YOUTUBE_URL)],
         [InlineKeyboardButton("🎵 TikTok", url=TIKTOK_URL)],
+        [InlineKeyboardButton("📧 Написать @aryxresp", url=f"https://t.me/aryxresp")],
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -954,22 +866,7 @@ async def show_about(query) -> None:
             "🎬 YouTube: https://www.youtube.com/@respzonamus\n"
             "🎵 TikTok: https://www.tiktok.com/@respozona\n"
             "📧 Email: resp.zona@bk.ru\n\n"
-            "Спасибо, что слушаешь RESPZONA! ❤️"
-        ),
-        reply_markup=reply_markup,
-        parse_mode='Markdown'
-    )
-
-async def show_collaboration(query) -> None:
-    keyboard = [
-        [InlineKeyboardButton("📱 Написать Aryx", url=f"https://t.me/{COLLABORATION_CONTACT.replace('@', '')}")],
-        [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await query.edit_message_text(
-        text=(
-            "🤝 **СОТРУДНИЧЕСТВО С RESPZONA:**\n\n"
+            "**🤝 СОТРУДНИЧЕСТВО:**\n\n"
             "Ты хочешь сотрудничать с нами? Отлично! 🎵\n\n"
             "✨ **Мы открыты для:**\n"
             "🎨 Дизайнеров (обложки, визуалы, мерч)\n"
@@ -979,15 +876,8 @@ async def show_collaboration(query) -> None:
             "📱 Маркетологов (SMM, реклама)\n"
             "💻 Программистов (сайты, боты, приложения)\n"
             "🎸 Музыкантов (гитара, бас, ударные)\n\n"
-            "💬 **Как с нами связаться:**\n\n"
-            f"📌 **Контакт для сотрудничества:** {COLLABORATION_CONTACT}\n\n"
-            "💡 **Расскажи нам:**\n"
-            "• Кто ты и чем занимаешься\n"
-            "• Какой идеей ты хочешь помочь\n"
-            "• Портфолио или примеры работ\n"
-            "• Твои контакты для связи\n\n"
-            "⚡ Мы ответим в течение 24 часов!\n\n"
-            "Давай создавать крутую музыку вместе! 🚀"
+            "💬 **Контакт для сотрудничества:** @aryxresp\n\n"
+            "Спасибо, что слушаешь RESPZONA! ❤️"
         ),
         reply_markup=reply_markup,
         parse_mode='Markdown'
@@ -1049,14 +939,12 @@ async def back_to_menu(query) -> None:
         ],
         [
             InlineKeyboardButton("👥 О нас", callback_data='about'),
-            InlineKeyboardButton("🤝 Сотрудничество", callback_data='collaboration')
         ],
         [
             InlineKeyboardButton("🔗 Рефералы", callback_data='referral_menu'),
-            InlineKeyboardButton("🎰 Лотерея", callback_data='lottery_menu')
+            InlineKeyboardButton("📊 Опросы", callback_data='polls_menu'),
         ],
         [
-            InlineKeyboardButton("📊 Опросы", callback_data='polls_menu'),
             InlineKeyboardButton("📢 Объявления", callback_data='announcements_menu')
         ],
         [InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL)]
@@ -1096,8 +984,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             await show_boosty_details(query, chat_id)
         elif query.data == 'about':
             await show_about(query)
-        elif query.data == 'collaboration':
-            await show_collaboration(query)
         elif query.data == 'back_to_menu':
             await back_to_menu(query)
         elif query.data.startswith('play_track_'):
@@ -1110,16 +996,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         # Реферальная система
         elif query.data == 'referral_menu':
             await show_referral_menu(query)
-        elif query.data == 'referral_rewards':
+        elif query.data == 'show_rewards':
             await show_referral_rewards(query)
-        
-        # Лотерея
-        elif query.data == 'lottery_menu':
-            await show_lottery_menu(query)
-        elif query.data == 'join_lottery':
-            await join_lottery(query)
-        elif query.data == 'lottery_stats':
-            await show_lottery_stats(query)
         
         # Опросы
         elif query.data == 'polls_menu':
@@ -1142,7 +1020,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 def main() -> None:
     logger.info("=" * 60)
-    logger.info("🚀 ЗАПУСК БОТА RESPZONA V4 (ИСПРАВЛЕННАЯ ВЕРСИЯ)")
+    logger.info("🚀 ЗАПУСК БОТА RESPZONA V5 (ФИНАЛЬНАЯ ВЕРСИЯ)")
     logger.info(f"📊 Загружено {len(users_data)} пользователей")
     logger.info("=" * 60)
 
@@ -1153,7 +1031,7 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, lambda u, c: None))
 
-    logger.info("🎵 БОТ RESPZONA V4 ГОТОВ К РАБОТЕ!")
+    logger.info("🎵 БОТ RESPZONA V5 ГОТОВ К РАБОТЕ!")
     logger.info("=" * 60)
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
