@@ -270,123 +270,6 @@ async def show_poll_results(query) -> None:
     )
 
 # ====================================================================
-# СИСТЕМА ОБЪЯВЛЕНИЙ (ТОЛЬКО АДМИН) 📢
-# ====================================================================
-
-async def show_announcements_menu(query) -> None:
-    """Показывает меню объявлений (только для админа)"""
-    
-    if query.from_user.id != ADMIN_ID:
-        await query.answer("❌ Только администратор может отправлять объявления", show_alert=True)
-        return
-    
-    keyboard = [
-        [InlineKeyboardButton("📢 Инструкция", callback_data='announce_help')],
-        [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await query.edit_message_text(
-        text="📢 **ОБЪЯВЛЕНИЯ И РАССЫЛКИ** 📢\n\n"
-             "Админ-панель для отправки сообщений всем пользователям.\n\n"
-             "📤 Используй команду: `/announce текст сообщения`\n\n"
-             "💡 Пример:\n"
-             "`/announce 🎉 Новый трек ВЫХОДИТ СЕЙЧАС!`",
-        reply_markup=reply_markup,
-        parse_mode='Markdown'
-    )
-
-async def announce_help(query) -> None:
-    """Показывает инструкцию по объявлениям"""
-    keyboard = [[InlineKeyboardButton("⬅️ Назад", callback_data='announcements_menu')]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await query.edit_message_text(
-        text=(
-            "📢 **КАК ОТПРАВИТЬ ОБЪЯВЛЕНИЕ:**\n\n"
-            "1️⃣ **Команда:** `/announce текст`\n\n"
-            "2️⃣ **Примеры:**\n"
-            "`/announce 🎉 Новый трек выходит!\n`"
-            "`/announce 📅 Стрим завтра в 19:00`\n"
-            "`/announce 🎁 Спасибо за поддержку!`\n\n"
-            "3️⃣ **Объявление отправится:**\n"
-            "✅ Всем пользователям\n"
-            "✅ С включенными уведомлениями\n"
-            "✅ Сразу же\n\n"
-            "📊 **Ты получишь статистику:**\n"
-            "✅ Сколько доставлено\n"
-            "❌ Сколько ошибок\n"
-            "🚫 Сколько заблокировало"
-        ),
-        reply_markup=reply_markup,
-        parse_mode='Markdown'
-    )
-
-async def announce_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Команда /announce - отправка объявления"""
-    
-    if update.effective_user.id != ADMIN_ID:
-        await update.message.reply_text("❌ Только администратор может это делать")
-        return
-    
-    if not context.args:
-        await update.message.reply_text(
-            "📢 **Использование:** `/announce текст сообщения`\n\n"
-            "📝 Пример: `/announce 🎉 Новый трек выходит сейчас!`",
-            parse_mode='Markdown'
-        )
-        return
-    
-    message_text = ' '.join(context.args)
-    
-    if len(message_text) > 4096:
-        await update.message.reply_text("❌ Сообщение слишком длинное (макс 4096 символов)")
-        return
-    
-    await update.message.reply_text(
-        "📢 **Отправляю объявление всем...**\n⏳ Это может занять несколько секунд..."
-    )
-    
-    sent_count = 0
-    failed_count = 0
-    blocked_count = 0
-    
-    # Отправляем всем пользователям с включенными уведомлениями
-    for chat_id_str, user_data in users_data.items():
-        if user_data.get('notifications_enabled', True):
-            try:
-                chat_id = int(chat_id_str)
-                await context.bot.send_message(
-                    chat_id=chat_id,
-                    text=f"📢 **ОБЪЯВЛЕНИЕ ОТ RESPZONA:**\n\n{message_text}",
-                    parse_mode='Markdown'
-                )
-                sent_count += 1
-                logger.info(f"✅ Объявление отправлено {chat_id}")
-            except Exception as e:
-                error_msg = str(e).lower()
-                logger.warning(f"⚠️ Ошибка отправки {chat_id}: {error_msg}")
-                if 'blocked' in error_msg or 'forbidden' in error_msg:
-                    blocked_count += 1
-                    user_data['notifications_enabled'] = False
-                else:
-                    failed_count += 1
-    
-    save_json_file(USERS_FILE, users_data)
-    
-    report = (
-        f"✅ **ОБЪЯВЛЕНИЕ ОТПРАВЛЕНО!**\n\n"
-        f"📊 **СТАТИСТИКА:**\n"
-        f"✅ Доставлено: **{sent_count}** пользователей\n"
-        f"❌ Ошибок: **{failed_count}**\n"
-        f"🚫 Заблокировало: **{blocked_count}**\n"
-        f"📈 Всего в БД: **{len(users_data)}**"
-    )
-    
-    await update.message.reply_text(report, parse_mode='Markdown')
-    logger.info(f"📢 ОБЪЯВЛЕНИЕ ОТПРАВЛЕНО: {sent_count}/{len(users_data)} юзерам ✅")
-
-# ====================================================================
 # ОСНОВНЫЕ ФУНКЦИИ
 # ====================================================================
 
@@ -408,51 +291,25 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         save_json_file(USERS_FILE, users_data)
         logger.info(f"✅ Новый пользователь: {user.first_name}")
     
-    # РАЗНЫЕ МЕНЮ ДЛЯ АДМИНА И ОБЫЧНЫХ ПОЛЬЗОВАТЕЛЕЙ
-    if user.id == ADMIN_ID:
-        # МЕНЮ ДЛЯ АДМИНА (С ОБЪЯВЛЕНИЯМИ)
-        keyboard = [
-            [InlineKeyboardButton("🎵 Приложение Respzona", web_app=WebAppInfo(url=WEBAPP_URL))],
-            [
-                InlineKeyboardButton("🎵 Треки", callback_data='tracks'),
-                InlineKeyboardButton("🎟️ Билеты", callback_data='tickets')
-            ],
-            [
-                InlineKeyboardButton("💳 Донаты", callback_data='donates'),
-                InlineKeyboardButton("🔔 Уведомления", callback_data='notifications')
-            ],
-            [
-                InlineKeyboardButton("👥 О нас", callback_data='about'),
-            ],
-            [
-                InlineKeyboardButton("📊 Опросы", callback_data='polls_menu'),
-            ],
-            [
-                InlineKeyboardButton("📢 Объявления (Админ)", callback_data='announcements_menu')
-            ],
-            [InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL)]
-        ]
-        logger.info(f"👑 АДМИН {user.first_name} зашел в бот")
-    else:
-        # МЕНЮ ДЛЯ ОБЫЧНЫХ ПОЛЬЗОВАТЕЛЕЙ (БЕЗ ОБЪЯВЛЕНИЙ)
-        keyboard = [
-            [InlineKeyboardButton("🎵 Приложение Respzona", web_app=WebAppInfo(url=WEBAPP_URL))],
-            [
-                InlineKeyboardButton("🎵 Треки", callback_data='tracks'),
-                InlineKeyboardButton("🎟️ Билеты", callback_data='tickets')
-            ],
-            [
-                InlineKeyboardButton("💳 Донаты", callback_data='donates'),
-                InlineKeyboardButton("🔔 Уведомления", callback_data='notifications')
-            ],
-            [
-                InlineKeyboardButton("👥 О нас", callback_data='about'),
-            ],
-            [
-                InlineKeyboardButton("📊 Опросы", callback_data='polls_menu'),
-            ],
-            [InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL)]
-        ]
+    # МЕНЮ ДЛЯ ВСЕХ ПОЛЬЗОВАТЕЛЕЙ
+    keyboard = [
+        [InlineKeyboardButton("🎵 Приложение Respzona", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [
+            InlineKeyboardButton("🎵 Треки", callback_data='tracks'),
+            InlineKeyboardButton("🎟️ Билеты", callback_data='tickets')
+        ],
+        [
+            InlineKeyboardButton("💳 Донаты", callback_data='donates'),
+            InlineKeyboardButton("🔔 Уведомления", callback_data='notifications')
+        ],
+        [
+            InlineKeyboardButton("👥 О нас", callback_data='about'),
+        ],
+        [
+            InlineKeyboardButton("📊 Опросы", callback_data='polls_menu'),
+        ],
+        [InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL)]
+    ]
     
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -856,50 +713,25 @@ async def show_yoomoney_details(query, chat_id) -> None:
     )
 
 async def back_to_menu(query) -> None:
-    user_id = query.from_user.id
-    
-    # РАЗНЫЕ МЕНЮ ДЛЯ АДМИНА И ПОЛЬЗОВАТЕЛЕЙ
-    if user_id == ADMIN_ID:
-        keyboard = [
-            [InlineKeyboardButton("🎵 Приложение Respzona", web_app=WebAppInfo(url=WEBAPP_URL))],
-            [
-                InlineKeyboardButton("🎵 Треки", callback_data='tracks'),
-                InlineKeyboardButton("🎟️ Билеты", callback_data='tickets')
-            ],
-            [
-                InlineKeyboardButton("💳 Донаты", callback_data='donates'),
-                InlineKeyboardButton("🔔 Уведомления", callback_data='notifications')
-            ],
-            [
-                InlineKeyboardButton("👥 О нас", callback_data='about'),
-            ],
-            [
-                InlineKeyboardButton("📊 Опросы", callback_data='polls_menu'),
-            ],
-            [
-                InlineKeyboardButton("📢 Объявления (Админ)", callback_data='announcements_menu')
-            ],
-            [InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL)]
-        ]
-    else:
-        keyboard = [
-            [InlineKeyboardButton("🎵 Приложение Respzona", web_app=WebAppInfo(url=WEBAPP_URL))],
-            [
-                InlineKeyboardButton("🎵 Треки", callback_data='tracks'),
-                InlineKeyboardButton("🎟️ Билеты", callback_data='tickets')
-            ],
-            [
-                InlineKeyboardButton("💳 Донаты", callback_data='donates'),
-                InlineKeyboardButton("🔔 Уведомления", callback_data='notifications')
-            ],
-            [
-                InlineKeyboardButton("👥 О нас", callback_data='about'),
-            ],
-            [
-                InlineKeyboardButton("📊 Опросы", callback_data='polls_menu'),
-            ],
-            [InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL)]
-        ]
+    # МЕНЮ ДЛЯ ВСЕХ ПОЛЬЗОВАТЕЛЕЙ
+    keyboard = [
+        [InlineKeyboardButton("🎵 Приложение Respzona", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [
+            InlineKeyboardButton("🎵 Треки", callback_data='tracks'),
+            InlineKeyboardButton("🎟️ Билеты", callback_data='tickets')
+        ],
+        [
+            InlineKeyboardButton("💳 Донаты", callback_data='donates'),
+            InlineKeyboardButton("🔔 Уведомления", callback_data='notifications')
+        ],
+        [
+            InlineKeyboardButton("👥 О нас", callback_data='about'),
+        ],
+        [
+            InlineKeyboardButton("📊 Опросы", callback_data='polls_menu'),
+        ],
+        [InlineKeyboardButton("📱 Telegram", url=TELEGRAM_URL)]
+    ]
     
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -957,12 +789,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             await vote_poll(query, option_id)
         elif query.data == 'poll_results':
             await show_poll_results(query)
-        
-        # Объявления (только админ)
-        elif query.data == 'announcements_menu':
-            await show_announcements_menu(query)
-        elif query.data == 'announce_help':
-            await announce_help(query)
     
     except Exception as e:
         logger.error(f"❌ Ошибка в button_callback: {e}", exc_info=True)
@@ -970,20 +796,17 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 def main() -> None:
     logger.info("=" * 70)
-    logger.info("🚀 ЗАПУСК БОТА RESPZONA V9 (ОБЪЯВЛЕНИЯ ТОЛЬКО ДЛЯ АДМИНОВ)")
+    logger.info("🚀 ЗАПУСК БОТА RESPZONA V10")
     logger.info(f"📊 Загружено {len(users_data)} пользователей")
     logger.info("=" * 70)
 
     application = Application.builder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("announce", announce_handler))
     application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, lambda u, c: None))
 
-    logger.info("✅ ОБЪЯВЛЕНИЯ: ТОЛЬКО ДЛЯ АДМИНОВ")
-    logger.info("✅ ОБЫЧНЫЕ ПОЛЬЗОВАТЕЛИ: БЕЗ КНОПКИ ОБЪЯВЛЕНИЙ")
-    logger.info("🎵 БОТ RESPZONA V9 ГОТОВ К РАБОТЕ!")
+    logger.info("🎵 БОТ RESPZONA V10 ГОТОВ К РАБОТЕ!")
     logger.info("=" * 70)
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
