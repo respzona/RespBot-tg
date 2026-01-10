@@ -21,8 +21,6 @@ WEBAPP_URL = "https://resp1-two.vercel.app/"
 TELEGRAM_URL = "https://t.me/RESPZONA"
 YOUTUBE_URL = "https://www.youtube.com/@respzonamus"
 TIKTOK_URL = "https://www.tiktok.com/@respozona"
-YOUTUBE_STREAM_URL = "https://www.youtube.com/live/RESPZONA"
-TIKTOK_STREAM_URL = "https://www.tiktok.com/@respozona/live"
 
 # ⭐ ССЫЛКИ НА ПОДДЕРЖКУ
 YOOMONEY_URL = "https://yoomoney.ru/to/4100118663676748"
@@ -92,7 +90,7 @@ TRACKS = {
     }
 }
 
-# События
+# События (Архив)
 EVENTS = [
     {
         'date': '07.01.2025',
@@ -100,9 +98,9 @@ EVENTS = [
         'title': '🎉 БОЛЬШОЙ НОВОГОДНИЙ СТРИМ',
         'description': 'Масштабная новогодняя трансляция музыки, веселья и общения с фанатами!',
         'platforms': [
-            {'name': '🎬 YouTube (БЕСПЛАТНО)', 'url': YOUTUBE_STREAM_URL},
-            {'name': '🎵 TikTok Live (БЕСПЛАТНО)', 'url': TIKTOK_STREAM_URL},
-            {'name': '💎 Boosty (БЕСПЛАТНО)', 'url': BOOSTY_DONATE_URL}
+            {'name': '🎬 YouTube', 'url': 'https://www.youtube.com/@respzonamus'},
+            {'name': '🎵 TikTok Live', 'url': 'https://www.tiktok.com/@respozona'},
+            {'name': '💎 Boosty', 'url': 'https://boosty.to/respzona'}
         ]
     }
 ]
@@ -296,7 +294,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         [InlineKeyboardButton("🎵 Приложение Respzona", web_app=WebAppInfo(url=WEBAPP_URL))],
         [
             InlineKeyboardButton("🎵 Треки", callback_data='tracks'),
-            InlineKeyboardButton("🎟️ Билеты", callback_data='tickets')
+            InlineKeyboardButton("📰 Новости", callback_data='news')
         ],
         [
             InlineKeyboardButton("💳 Донаты", callback_data='donates'),
@@ -318,7 +316,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"Мы - музыкальная группа из Уфы и Стерлитамака.\n"
         f"Здесь ты можешь:\n"
         f"✨ Слушать наши треки онлайн\n"
-        f"🎤 Узнать о концертах и событиях\n"
+        f"📰 Читать последние новости\n"
         f"💳 Поддержать развитие проекта\n"
         f"🔔 Включить уведомления о новых релизах\n"
         f"📱 Следить за нами в социальных сетях\n\n"
@@ -426,41 +424,40 @@ async def show_track_info(query, track_id) -> None:
         parse_mode='Markdown'
     )
 
-async def show_tickets(query, chat_id) -> None:
+async def show_news(query, chat_id) -> None:
+    """Показывает страницу новостей с архивом событий"""
     keyboard = [
-        [InlineKeyboardButton("📅 Предстоящие события", callback_data='upcoming_events')],
-        [InlineKeyboardButton("🎬 YouTube БЕСПЛАТНО", url=YOUTUBE_STREAM_URL)],
-        [InlineKeyboardButton("🎵 TikTok Live БЕСПЛАТНО", url=TIKTOK_STREAM_URL)],
-        [InlineKeyboardButton("💎 Boosty БЕСПЛАТНО", url=BOOSTY_DONATE_URL)],
+        [InlineKeyboardButton("📅 Архив событий", callback_data='events_archive')],
+        [InlineKeyboardButton("🎵 Новые треки", callback_data='new_tracks_news')],
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await query.edit_message_text(
         text=(
-            "🎟️ **Билеты и события:**\n\n"
-            "📺 **СМОТРИ ТРАНСЛЯЦИИ БЕСПЛАТНО!**\n\n"
-            "🎬 **YouTube** - смотри прямые трансляции\n"
-            "🎵 **TikTok Live** - следи за нашим TikTok\n"
-            "💎 **Boosty** - эксклюзивный контент\n\n"
-            "🔔 Нажми кнопку 'Предстоящие события' для полной информации!"
+            "📰 **НОВОСТИ И ОБНОВЛЕНИЯ:**\n\n"
+            "Последние новости RESPZONA:\n\n"
+            "🎵 **Новые треки** - смотри информацию о наших последних релизах\n"
+            "📅 **Архив событий** - вспоминай прошлые трансляции и события\n\n"
+            "Подпишись на уведомления, чтобы не пропустить ничего! 🔔"
         ),
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
 
-async def show_upcoming_events(query, chat_id) -> None:
+async def show_events_archive(query, chat_id) -> None:
+    """Показывает архив событий"""
     if not EVENTS:
-        keyboard = [[InlineKeyboardButton("⬅️ Назад", callback_data='tickets')]]
+        keyboard = [[InlineKeyboardButton("⬅️ Назад", callback_data='news')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(
-            text="📅 **Предстоящие события:**\n\n❌ Событий пока нет",
+            text="📅 **Архив событий:**\n\n❌ События пока не добавлены",
             reply_markup=reply_markup,
             parse_mode='Markdown'
         )
         return
 
-    text = "📅 **ПРЕДСТОЯЩИЕ СОБЫТИЯ:**\n\n"
+    text = "📅 **АРХИВ СОБЫТИЙ:**\n\n"
     for event in EVENTS:
         text += f"{'=' * 50}\n"
         text += f"📆 **{event['date']}** | ⏰ **{event['time']}**\n"
@@ -471,13 +468,34 @@ async def show_upcoming_events(query, chat_id) -> None:
             text += f"🔗 [{platform['name']}]({platform['url']})\n"
         text += "\n"
     text += f"{'=' * 50}\n\n"
-    text += "Подпишись на уведомления, чтобы не пропустить! 🔔"
+    text += "Спасибо, что были вместе с нами! 🎶"
 
-    keyboard = [[InlineKeyboardButton("⬅️ Назад", callback_data='tickets')]]
+    keyboard = [[InlineKeyboardButton("⬅️ Назад", callback_data='news')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await query.edit_message_text(
         text=text,
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+async def show_new_tracks_news(query, chat_id) -> None:
+    """Показывает информацию о новых треках"""
+    keyboard = [
+        [InlineKeyboardButton("🎵 Слушать все треки", callback_data='tracks')],
+        [InlineKeyboardButton("⬅️ Назад к новостям", callback_data='news')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text=(
+            "🎵 **НОВЫЕ ТРЕКИ:**\n\n"
+            "Последние релизы RESPZONA:\n\n"
+            "🌙 **MIDNIGHT GLOW** - Скоро выходит!\n"
+            "Электроника/Лирика - новый трек с лирическим посланием\n\n"
+            "Следи за нашими социальными сетями, чтобы узнать точную дату релиза! 🔔\n\n"
+            "📱 Подпишись на уведомления и первым узнаешь о новых треках!"
+        ),
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
@@ -620,7 +638,7 @@ async def show_about(query) -> None:
             "**Команда проекта:**\n"
             "⭐ **Aryx** — главный идеолог, социальные сети, превью, тексты, "
             "программирование и программные функции 💻\n"
-            "⭐ **Nng** — социальные сети, превью, тексты, event-менеджер 📱\n"
+            "⭐ **Nng** — главный идеолог\n"
             "🎸 **nRIS** — третья гитара, помощник проекта\n\n"
             "**Наш стиль:** Pop / Rap / Phonk / Electronic 🎵\n\n"
             "**Следи за нами:**\n"
@@ -718,7 +736,7 @@ async def back_to_menu(query) -> None:
         [InlineKeyboardButton("🎵 Приложение Respzona", web_app=WebAppInfo(url=WEBAPP_URL))],
         [
             InlineKeyboardButton("🎵 Треки", callback_data='tracks'),
-            InlineKeyboardButton("🎟️ Билеты", callback_data='tickets')
+            InlineKeyboardButton("📰 Новости", callback_data='news')
         ],
         [
             InlineKeyboardButton("💳 Донаты", callback_data='donates'),
@@ -750,12 +768,14 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     try:
         if query.data == 'tracks':
             await show_tracks(query, chat_id)
-        elif query.data == 'tickets':
-            await show_tickets(query, chat_id)
+        elif query.data == 'news':
+            await show_news(query, chat_id)
+        elif query.data == 'events_archive':
+            await show_events_archive(query, chat_id)
+        elif query.data == 'new_tracks_news':
+            await show_new_tracks_news(query, chat_id)
         elif query.data == 'donates':
             await show_donates(query, chat_id)
-        elif query.data == 'upcoming_events':
-            await show_upcoming_events(query, chat_id)
         elif query.data == 'notifications':
             await show_notifications_menu(query, chat_id)
         elif query.data == 'toggle_notifications_action':
